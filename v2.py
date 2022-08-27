@@ -80,7 +80,8 @@ class EditBox:
                     pos = box['bounding_box']
                     if pos['x1'] <= pg.mouse.get_pos()[0] <= pos['x2'] and \
                             pos['y1'] <= pg.mouse.get_pos()[1] <= pos['y2']:
-                        print(box['text'])
+                        print(f'"{EditBox.text}"')
+
                         EditBox.text = box['text']
                         EditBox.selected_box = i
 
@@ -101,10 +102,7 @@ class EditBox:
                 else:
                     EditBox.text += event.unicode
 
-                if EditBox.text == '':
-                    print("None")
-                else:
-                    print(EditBox.text)
+                print(f'"{EditBox.text}"')
 
 
 # makes new empty boxes
@@ -146,18 +144,17 @@ class DragCheck:
                 elif event.key == pg.K_RETURN and DragCheck.draw_box_stick:
                     DragCheck.dragging = False
                     DragCheck.draw_box_stick = False
-                    print({"text": "",
-                                          "bounding_box": {"x1": DragCheck.start[0],
-                                                           "y1": DragCheck.start[1],
-                                                           "x2": DragCheck.start[0] + DragCheck.size[0],
-                                                           "y2": DragCheck.start[1] + DragCheck.size[1]
-                                                           }})
                     DataJson.data.append({"text": "",
                                           "bounding_box": {"x1": DragCheck.start[0],
                                                            "y1": DragCheck.start[1],
                                                            "x2": DragCheck.start[0] + DragCheck.size[0],
                                                            "y2": DragCheck.start[1] + DragCheck.size[1]
                                                            }})
+
+                    # selects the new box (the new boxes pos is the las of the list)
+                    EditBox.selected_box = len(DataJson.data) - 1
+                    print(EditBox.selected_box)
+
 
     @staticmethod
     def draw_select_box():
@@ -194,14 +191,14 @@ def event_loop():
     frame_events = pg.event.get()
 
     check_exit(frame_events)
-    DragCheck.check_drag(frame_events)
     EditBox.check_select_box(frame_events)
+    DragCheck.check_drag(frame_events)
 
-
+    # print(EditBox.selected_box)
 
 
 def main():
-    textImageDir = r"C:\Users\videw\Downloads\book page.jpg"
+    textImageDir = r"C:\Users\videw\Downloads\IMG_2421.png"
 
     global game_screen
     pg.init()
@@ -211,6 +208,7 @@ def main():
     pg.display.set_caption('Maze')
     clock = pg.time.Clock()
 
+    # DataJson.get_text_from_image(textImageDir)
     DataJson.get_data_form_json()
     print(DataJson.data)
     while True:
