@@ -48,6 +48,57 @@ class DataJson:
         return response
 
     @staticmethod
+    def ocr_space_file(filename, language='spa'):
+        """ OCR.space API request with local file.
+            Python3.5 - not tested on 2.7
+        :param filename: Your file path & name.
+        :param overlay: Is OCR.space overlay required in your response.
+                        Defaults to False.
+        :param api_key: OCR.space API key.
+                        Defaults to 'helloworld'.
+        :param language: Language code to be used in OCR.
+                        List of available language codes can be found on https://ocr.space/OCRAPI
+                        Defaults to 'en'.
+        :return: Result in JSON format.
+        """
+
+        api_key = "K85003833988957"
+
+        payload = {'isOverlayRequired': True,
+                   'apikey': api_key,
+                   'language': language,
+                   }
+        with open(filename, 'rb') as f:
+            r = requests.post('https://api.ocr.space/parse/image',
+                              files={filename: f},
+                              data=payload,
+                              )
+
+        DataJson.data = r.content.decode()
+        return DataJson.data
+
+    @staticmethod
+    def get_text_from_image_space(image):
+        api_url = 'https://api.ocr.space/parse/image'
+        api_key = "K85003833988957"
+        payload = {
+            "apikey": api_key,
+            "isOverlayRequired": True,
+            "language": "spa",
+        }
+
+        response = requests.post(api_url,
+                                 files={image},
+                                 data=payload)
+
+        json_object = json.dumps(response, indent=4)
+        with open("sample.json", "w") as outfile:
+            outfile.write(json_object)
+
+        return response
+
+
+    @staticmethod
     def get_data_form_json():
         with open("sample.json") as jsonFile:
             json_object = json.load(jsonFile)
@@ -224,4 +275,7 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    # main()
+    DataJson.ocr_space_file(r"C:\Users\videw\Downloads\IMG_2421.png")
+    DataJson.save_data_to_jason()
+    print(DataJson.data)
