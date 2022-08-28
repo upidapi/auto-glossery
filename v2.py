@@ -33,6 +33,13 @@ def draw_rgba_rect(surface, color, start, size, outline_width=0, outline_color=(
     pg.draw.rect(surface, outline_color, start + size, outline_width)
 
 
+def get_next_word() -> dict:
+    lines = DataJson.data["ParsedResults"][0]["TextOverlay"]["Lines"]
+    for line in lines:
+        words = line["Words"]
+        for word in words:
+            yield word
+
 class DataJson:
     data = []
 
@@ -62,7 +69,6 @@ class DataJson:
         DataJson.data = r.content.decode()
         return DataJson.data
 
-
     @staticmethod
     def get_data_form_json():
         with open("sample.json") as jsonFile:
@@ -77,9 +83,6 @@ class DataJson:
         json_object = json.dumps(DataJson.data, indent=4)
         with open("sample.json", "w") as outfile:
             outfile.write(json_object)
-
-
-# print(get_text_from_image(textImageDir))
 
 
 # writes and checks values for boxes
@@ -234,102 +237,16 @@ class BoundingBox:
                                outline_width=1, outline_color=(0, 100, 255))
 
 
-saved = {
-    "Lines": [
-        {
-            "LineText": "vas a",
-            "Words": [
-                {
-                    "WordText": "vas",
-                    "Left": 61.0,
-                    "Top": 3.0,
-                    "Height": 12.0,
-                    "Width": 29.0
-                },
-                {
-                    "WordText": "a",
-                    "Left": 94.0,
-                    "Top": 5.0,
-                    "Height": 11.0,
-                    "Width": 12.0}
-            ],
-            "MaxHeight": 12.0,
-            "MinTop": 3.0},
-        {
-            "LineText": "(el) mediodía",
-            "Words": [
-                {
-                    "WordText": "(el)",
-                    "Left": 59.0,
-                    "Top": 30.0,
-                    "Height": 20.0,
-                    "Width": 26.0
-                },
-                {"WordText": "mediodía",
-                 "Left": 91.0,
-                 "Top": 34.0,
-                 "Height": 19.0,
-                 "Width": 80.0
-                 }
-            ],
-            "MaxHeight": 20.0,
-            "MinTop": 30.0}
-    ]
-}
-saved = {
-    "ParsedResults": [
-        {
-            "TextOverlay": {
-                "Lines": [
-                    {
-                        "Words": [
-                            {
-                                "WordText": "Word 1",
-                                "Left": 106,
-                                "Top": 91,
-                                "Height": 9,
-                                "Width": 11
-                            },
-                            {
-                                "WordText": "Word 2",
-                                "Left": 121,
-                                "Top": 90,
-                                "Height": 13,
-                                "Width": 51
-                            }
-
-                        ],
-                        "MaxHeight": 13,
-                        "MinTop": 90
-                    },
-
-                ],
-                "HasOverlay": True,
-                "Message": None
-            },
-            "FileParseExitCode": "1",
-            "ParsedText": "This is a sample parsed result",
-
-            "ErrorMessage": None,
-            "ErrorDetails": None
-        },
-        {
-            "TextOverlay": None,
-            "FileParseExitCode": -10,
-            "ParsedText": None,
-
-            "ErrorMessage": "...error message (if any)",
-            "ErrorDetails": "...detailed error message (if any)"
-        }
-
-    ],
-    "OCRExitCode": "2",
-    "IsErroredOnProcessing": False,
-    "ErrorMessage": None,
-    "ErrorDetails": None,
-    "SearchablePDFURL": "https://.....",
-    "ProcessingTimeInMilliseconds": "3000"
-}
+class EditInput:
+    @staticmethod
+    def select_box(frame_events):
+        for event in frame_events:
+            # checks if you pressed right mouse button
+            if event.type == pg.MOUSEBUTTONDOWN and event.button == 3:
+                for word in get_next_word():
+                    x1, y1, x2, y2 = wh_to_chords(word["Left"], word["Top"], word["Width"], word["Height"])
+                    if x1 <= pg.mouse.get_pos()[0] <= x2 and y1 <= pg.mouse.get_pos()[1] <= y2:
+                        print(word["WordText"])
 
 
 def check_exit(frame_events):
@@ -344,19 +261,20 @@ def event_loop():
     frame_events = pg.event.get()
 
     check_exit(frame_events)
-    # EditBox.check_select_box(frame_events)
+    EditInput.select_box(frame_events)
     # DragCheck.check_drag(frame_events)
 
     # print(EditBox.selected_box)
 
 
 def main():
-    textImageDir = r"C:\Users\videw\Downloads\book page.jpg"
-
     global game_screen
+    global text_image_dir
+    text_image_dir = r"C:\Users\videw\Downloads\book page.jpg"
+
     pg.init()
 
-    pg_text_img = pg.image.load(textImageDir)
+    pg_text_img = pg.image.load(text_image_dir)
     game_screen = pg.display.set_mode(pg_text_img.get_size())
     pg.display.set_caption('Maze')
     clock = pg.time.Clock()
@@ -380,8 +298,4 @@ def main():
 if __name__ == "__main__":
     # DataJson.get_text_from_image(textImageDir)
     main()
-    # DataJson.ocr_space_file(r"C:\Users\videw\Downloads\book page.jpg")
     # DataJson.save_data_to_jason()
-    print(DataJson.data)
-
-    print(DataJson.data)
