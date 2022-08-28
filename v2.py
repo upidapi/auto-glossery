@@ -3,17 +3,25 @@ import json
 import requests
 
 
-def draw_rgba_rect(surface, color, start, end, outline_width=0, outline_color=(0, 0, 0)):
+def wh_to_chords(x, y, width, height):
+    return x, y, x + width, y + height
+
+
+def chords_to_wh(pos1, pos2):
     size = (
-        abs(start[0] - end[0]),
-        abs(start[1] - end[1])
+        abs(pos1[0] - pos2[0]),
+        abs(pos1[1] - pos2[1])
     )
 
     start = (
-        min(start[0], end[0]),
-        min(start[1], end[1])
+        min(pos1[0], pos2[0]),
+        min(pos1[1], pos2[1])
     )
 
+    return start, size
+
+
+def draw_rgba_rect(surface, color, start, size, outline_width=0, outline_color=(0, 0, 0)):
     # drawing a rect with alpha
     select_rect = pg.Surface(size)  # the size of your rect
     select_rect.set_alpha(color[3])  # alpha level
@@ -29,33 +37,10 @@ class DataJson:
     data = []
 
     @staticmethod
-    def get_text_from_image(image_dir):
-        image_file_descriptor = open(image_dir, 'rb')
-        files = {'image': image_file_descriptor}
-
-        api_url = 'https://api.api-ninjas.com/v1/imagetotext'
-
-        headers = {
-            "X-Api-Key": "yhS5vPsCpXpS44xc7Lk8Sw==hIbaqsxzX7p3I17L"
-        }
-
-        response = requests.post(api_url, files=files, headers=headers).text
-
-        json_object = json.dumps(response, indent=4)
-        with open("sample.json", "w") as outfile:
-            outfile.write(json_object)
-
-        return response
-
-    @staticmethod
-    def ocr_space_file(filename, language='spa'):
+    def ocr_space_file(filename, language='eng'):
         """ OCR.space API request with local file.
             Python3.5 - not tested on 2.7
         :param filename: Your file path & name.
-        :param overlay: Is OCR.space overlay required in your response.
-                        Defaults to False.
-        :param api_key: OCR.space API key.
-                        Defaults to 'helloworld'.
         :param language: Language code to be used in OCR.
                         List of available language codes can be found on https://ocr.space/OCRAPI
                         Defaults to 'en'.
@@ -77,26 +62,6 @@ class DataJson:
         DataJson.data = r.content.decode()
         return DataJson.data
 
-    @staticmethod
-    def get_text_from_image_space(image):
-        api_url = 'https://api.ocr.space/parse/image'
-        api_key = "K85003833988957"
-        payload = {
-            "apikey": api_key,
-            "isOverlayRequired": True,
-            "language": "spa",
-        }
-
-        response = requests.post(api_url,
-                                 files={image},
-                                 data=payload)
-
-        json_object = json.dumps(response, indent=4)
-        with open("sample.json", "w") as outfile:
-            outfile.write(json_object)
-
-        return response
-
 
     @staticmethod
     def get_data_form_json():
@@ -104,6 +69,7 @@ class DataJson:
             json_object = json.load(jsonFile)
             jsonFile.close()
 
+        # extracts
         DataJson.data = json.loads(json_object)
 
     @staticmethod
@@ -112,8 +78,6 @@ class DataJson:
         with open("sample.json", "w") as outfile:
             outfile.write(json_object)
 
-
-print(DataJson.data)
 
 # print(get_text_from_image(textImageDir))
 
@@ -169,7 +133,6 @@ class DragCheck:
     def check_drag(frame_events):
         for event in frame_events:
             if event.type == pg.MOUSEBUTTONDOWN and event.button == 2:
-
                 DragCheck.dragging = True
                 DragCheck.drag_start = pg.mouse.get_pos()
 
@@ -206,7 +169,6 @@ class DragCheck:
                     EditBox.selected_box = len(DataJson.data) - 1
                     print(EditBox.selected_box)
 
-
     @staticmethod
     def draw_select_box():
         if DragCheck.dragging:
@@ -223,11 +185,151 @@ class DragCheck:
                            outline_width=1, outline_color=(0, 100, 255))
 
 
-def draw_text_box():
-    for box in DataJson.data:
-        pos = box['bounding_box']
-        draw_rgba_rect(game_screen, (200, 200, 255, 128), (pos['x1'], pos['y1']), (pos['x2'], pos['y2']),
-                       outline_width=1, outline_color=(0, 100, 255))
+class BoundingBox:
+    @staticmethod
+    def draw_word_line():
+        # may look a bit of, it's because of rounding errors when drawing
+        lines = DataJson.data["ParsedResults"][0]["TextOverlay"]["Lines"]
+        for line in lines:
+            len_to_start_x = 1_000_000
+            len_to_start_y = 1_000_000
+            x = 1_000_000
+            y = 1_000_000
+            height = 0
+            width = 0
+
+            words = line["Words"]
+
+            # gets the bounding box for the line of words
+            for word in words:
+                x = min(x, word["Left"])
+                y = min(y, word["Top"])
+
+                # + word["Left"] adds the length of the last word
+                width = max(width, word["Width"] + word["Left"])
+                height = max(height, word["Height"] + word["Top"])
+
+                len_to_start_x = min(len_to_start_x, word["Left"])
+                len_to_start_y = min(len_to_start_y, word["Top"])
+
+            # - len_to_start_x removes the length from 0 -> the leftmost word
+            draw_rgba_rect(game_screen, (200, 200, 255, 128),
+                           (x, y),
+                           (width - len_to_start_x,
+                            height - len_to_start_y),
+                           outline_width=1, outline_color=(0, 100, 255))
+
+    @staticmethod
+    def draw_word():
+        # may look a bit of, it's because of rounding errors when drawing
+        lines = DataJson.data["ParsedResults"][0]["TextOverlay"]["Lines"]
+        for line in lines:
+            words = line["Words"]
+
+            # gets and draws the bounding box for each word
+            for word in words:
+                draw_rgba_rect(game_screen, (200, 200, 255, 128),
+                               (word["Left"], word["Top"]),
+                               (word["Width"], word["Height"]),
+                               outline_width=1, outline_color=(0, 100, 255))
+
+
+saved = {
+    "Lines": [
+        {
+            "LineText": "vas a",
+            "Words": [
+                {
+                    "WordText": "vas",
+                    "Left": 61.0,
+                    "Top": 3.0,
+                    "Height": 12.0,
+                    "Width": 29.0
+                },
+                {
+                    "WordText": "a",
+                    "Left": 94.0,
+                    "Top": 5.0,
+                    "Height": 11.0,
+                    "Width": 12.0}
+            ],
+            "MaxHeight": 12.0,
+            "MinTop": 3.0},
+        {
+            "LineText": "(el) mediodía",
+            "Words": [
+                {
+                    "WordText": "(el)",
+                    "Left": 59.0,
+                    "Top": 30.0,
+                    "Height": 20.0,
+                    "Width": 26.0
+                },
+                {"WordText": "mediodía",
+                 "Left": 91.0,
+                 "Top": 34.0,
+                 "Height": 19.0,
+                 "Width": 80.0
+                 }
+            ],
+            "MaxHeight": 20.0,
+            "MinTop": 30.0}
+    ]
+}
+saved = {
+    "ParsedResults": [
+        {
+            "TextOverlay": {
+                "Lines": [
+                    {
+                        "Words": [
+                            {
+                                "WordText": "Word 1",
+                                "Left": 106,
+                                "Top": 91,
+                                "Height": 9,
+                                "Width": 11
+                            },
+                            {
+                                "WordText": "Word 2",
+                                "Left": 121,
+                                "Top": 90,
+                                "Height": 13,
+                                "Width": 51
+                            }
+
+                        ],
+                        "MaxHeight": 13,
+                        "MinTop": 90
+                    },
+
+                ],
+                "HasOverlay": True,
+                "Message": None
+            },
+            "FileParseExitCode": "1",
+            "ParsedText": "This is a sample parsed result",
+
+            "ErrorMessage": None,
+            "ErrorDetails": None
+        },
+        {
+            "TextOverlay": None,
+            "FileParseExitCode": -10,
+            "ParsedText": None,
+
+            "ErrorMessage": "...error message (if any)",
+            "ErrorDetails": "...detailed error message (if any)"
+        }
+
+    ],
+    "OCRExitCode": "2",
+    "IsErroredOnProcessing": False,
+    "ErrorMessage": None,
+    "ErrorDetails": None,
+    "SearchablePDFURL": "https://.....",
+    "ProcessingTimeInMilliseconds": "3000"
+}
 
 
 def check_exit(frame_events):
@@ -242,14 +344,14 @@ def event_loop():
     frame_events = pg.event.get()
 
     check_exit(frame_events)
-    EditBox.check_select_box(frame_events)
-    DragCheck.check_drag(frame_events)
+    # EditBox.check_select_box(frame_events)
+    # DragCheck.check_drag(frame_events)
 
     # print(EditBox.selected_box)
 
 
 def main():
-    textImageDir = r"C:\Users\videw\Downloads\IMG_2421.png"
+    textImageDir = r"C:\Users\videw\Downloads\book page.jpg"
 
     global game_screen
     pg.init()
@@ -266,8 +368,9 @@ def main():
         game_screen.fill((255, 255, 255))
         game_screen.blit(pg_text_img, (0, 0))
 
-        DragCheck.draw_select_box()
-        draw_text_box()
+        # DragCheck.draw_select_box()
+        # BoundingBox.draw_word_line()
+        BoundingBox.draw_word()
 
         event_loop()
         pg.display.flip()
@@ -275,7 +378,10 @@ def main():
 
 
 if __name__ == "__main__":
-    # main()
-    DataJson.ocr_space_file(r"C:\Users\videw\Downloads\IMG_2421.png")
-    DataJson.save_data_to_jason()
+    # DataJson.get_text_from_image(textImageDir)
+    main()
+    # DataJson.ocr_space_file(r"C:\Users\videw\Downloads\book page.jpg")
+    # DataJson.save_data_to_jason()
+    print(DataJson.data)
+
     print(DataJson.data)
