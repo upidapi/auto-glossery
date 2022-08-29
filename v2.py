@@ -248,24 +248,32 @@ class BoundingBox:
 
 class EditInput:
     @staticmethod
-    def select_box(frame_events):
+    def check_click_word():
+        # checks if you clicked a word
+        for word in DataJson.get_next_word():
+            button_size = wh_to_chords((word["Left"], word["Top"], word["Width"], word["Height"]))
+            if button_click_check(button_size):
+                return word
+
+    @staticmethod
+    def check_click_line():
+        for line in DataJson.get_next_line():
+            # checks if you clicked a line
+            button_size = BoundingBox.get_word_line_size(line)
+            if button_click_check(button_size):
+                return line
+
+    @staticmethod
+    def select_box(frame_events, check_lines=True, check_words=True):
         for event in frame_events:
             # checks if you pressed right mouse button
             if event.type == pg.MOUSEBUTTONDOWN and event.button == 3:
-                not_executed = True
-                # checks if you clicked a word
-                for word in DataJson.get_next_word():
-                    button_size = wh_to_chords((word["Left"], word["Top"], word["Width"], word["Height"]))
-                    if button_click_check(button_size):
-                        print(word["WordText"])
-                        not_executed = False
-                        break
-
-                if not_executed:
-                    for line in DataJson.get_next_line():
-                        button_size = BoundingBox.get_word_line_size(line)
-                        if button_click_check(button_size):
-                            print(line["LineText"])
+                word_data = EditInput.check_click_word()
+                line_data = EditInput.check_click_line()
+                if word_data is not None and check_words:
+                    return word_data["WordText"]
+                elif line_data is not None and check_lines:
+                    return line_data["LineText"]
 
 
 def get_image(select_image="spa_text_glossary_perfect"):
@@ -282,7 +290,7 @@ def get_image(select_image="spa_text_glossary_perfect"):
     new_image = False
     if new_image:
         image.save('selected_image.jpg')
-        DataJson.ocr_space_file('selected_image.jpg')
+        DataJson.ocr_space_file('selected_image.jpg', language='spa')
         DataJson.save_data_to_jason()
 
 
@@ -298,7 +306,10 @@ def event_loop():
     frame_events = pg.event.get()
 
     check_exit(frame_events)
-    EditInput.select_box(frame_events)
+
+    temp = EditInput.select_box(frame_events, check_words=False)
+    if temp is not None:
+        print(temp)
     # DragCheck.check_drag(frame_events)
 
     # print(EditBox.selected_box)
