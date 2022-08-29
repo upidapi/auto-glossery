@@ -4,12 +4,12 @@ import requests
 from PIL import Image
 
 
-def wh_to_chords(wh):
+def wh_to_chords(wh) -> tuple[int, int, int, int]:
     x, y, width, height = wh
-    return x, y, x + width, y + height
+    return int(x), int(y), int(x + width), int(y + height)
 
 
-def chords_to_wh(chords):
+def chords_to_wh(chords: list[int, int, int, int]) -> tuple[tuple[int, int], tuple[int, int]]:
     x1, y1, x2, y2 = chords
     size = (
         abs(x1 - x2),
@@ -24,7 +24,7 @@ def chords_to_wh(chords):
     return start, size
 
 
-def button_click_check(button_size, click_pos=None):
+def button_click_check(button_size, click_pos=None) -> bool:
     if click_pos is None:
         click_pos = pg.mouse.get_pos()
 
@@ -45,14 +45,6 @@ def draw_rgba_rect(surface, color, start, size, outline_width=0, outline_color=(
 
     # draws the outline
     pg.draw.rect(surface, outline_color, start + size, outline_width)
-
-
-def get_next_word() -> dict:
-    lines = DataJson.data["ParsedResults"][0]["TextOverlay"]["Lines"]
-    for line in lines:
-        words = line["Words"]
-        for word in words:
-            yield word
 
 
 class DataJson:
@@ -99,6 +91,19 @@ class DataJson:
         json_object = json.dumps(DataJson.data, indent=4)
         with open("sample.json", "w") as outfile:
             outfile.write(json_object)
+
+    @staticmethod
+    def get_next_line() -> dict:
+        lines = DataJson.data["ParsedResults"][0]["TextOverlay"]["Lines"]
+        for line in lines:
+            yield line
+
+    @staticmethod
+    def get_next_word() -> dict:
+        for line in DataJson.get_next_line():
+            words = line["Words"]
+            for word in words:
+                yield word
 
 
 # # writes and checks values for boxes
@@ -208,7 +213,8 @@ class BoundingBox:
     @staticmethod
     def get_word_line_size(line):
         min_chords = [1_000_000, 1_000_000, 0, 0]
-        for word in line:
+        words = line["Words"]
+        for word in words:
             chords = wh_to_chords((word["Left"], word["Top"], word["Width"], word["Height"]))
             # gets the min/max chords of chords to get the bounding box
             min_chords[0] = min(min_chords[0], chords[0])
@@ -221,17 +227,15 @@ class BoundingBox:
     @staticmethod
     def draw_word_line():
         # may look a bit of, it's because of rounding errors when drawing
-        lines = DataJson.data["ParsedResults"][0]["TextOverlay"]["Lines"]
-        for line in lines:
-            start, size = chords_to_wh(BoundingBox.get_word_line_size(line["Words"]))
+        for line in DataJson.get_next_line():
+            start, size = chords_to_wh(BoundingBox.get_word_line_size(line))
             draw_rgba_rect(game_screen, (200, 200, 255, 128), start, size,
                            outline_width=1, outline_color=(0, 100, 255))
 
     @staticmethod
     def draw_word():
         # may look a bit of, it's because of rounding errors when drawing
-        lines = DataJson.data["ParsedResults"][0]["TextOverlay"]["Lines"]
-        for line in lines:
+        for line in DataJson.get_next_line():
             words = line["Words"]
 
             # gets and draws the bounding box for each word
@@ -248,10 +252,20 @@ class EditInput:
         for event in frame_events:
             # checks if you pressed right mouse button
             if event.type == pg.MOUSEBUTTONDOWN and event.button == 3:
-                for word in get_next_word():
+                not_executed = True
+                # checks if you clicked a word
+                for word in DataJson.get_next_word():
                     button_size = wh_to_chords((word["Left"], word["Top"], word["Width"], word["Height"]))
                     if button_click_check(button_size):
                         print(word["WordText"])
+                        not_executed = False
+                        break
+
+                if not_executed:
+                    for line in DataJson.get_next_line():
+                        button_size = BoundingBox.get_word_line_size(line)
+                        if button_click_check(button_size):
+                            print(line["LineText"])
 
 
 def get_image(select_image="spa_text_glossary_perfect"):
@@ -313,7 +327,7 @@ def main():
 
         # DragCheck.draw_select_box()
         BoundingBox.draw_word_line()
-        BoundingBox.draw_word()
+        # BoundingBox.draw_word()
 
         event_loop()
         pg.display.flip()
