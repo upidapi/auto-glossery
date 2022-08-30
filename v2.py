@@ -248,32 +248,38 @@ class BoundingBox:
 
 class EditInput:
     @staticmethod
-    def check_click_word():
-        # checks if you clicked a word
-        for word in DataJson.get_next_word():
-            button_size = wh_to_chords((word["Left"], word["Top"], word["Width"], word["Height"]))
-            if button_click_check(button_size):
-                return word
-
-    @staticmethod
-    def check_click_line():
-        for line in DataJson.get_next_line():
-            # checks if you clicked a line
-            button_size = BoundingBox.get_word_line_size(line)
-            if button_click_check(button_size):
-                return line
-
-    @staticmethod
-    def select_box(frame_events, check_lines=True, check_words=True):
+    def check_click_word(frame_events, button=1):
         for event in frame_events:
-            # checks if you pressed right mouse button
-            if event.type == pg.MOUSEBUTTONDOWN and event.button == 3:
-                word_data = EditInput.check_click_word()
-                line_data = EditInput.check_click_line()
-                if word_data is not None and check_words:
-                    return word_data["WordText"]
-                elif line_data is not None and check_lines:
-                    return line_data["LineText"]
+            # checks if you pressed x mouse button
+            if event.type == pg.MOUSEBUTTONDOWN and event.button == button:
+                # checks if you clicked a word
+                for word in DataJson.get_next_word():
+                    button_size = wh_to_chords((word["Left"], word["Top"], word["Width"], word["Height"]))
+                    if button_click_check(button_size):
+                        return word
+
+    @staticmethod
+    def check_click_line(frame_events, button=1):
+        for event in frame_events:
+            # checks if you pressed x mouse button
+            if event.type == pg.MOUSEBUTTONDOWN and event.button == button:
+                for line in DataJson.get_next_line():
+                    # checks if you clicked a line
+                    button_size = BoundingBox.get_word_line_size(line)
+                    if button_click_check(button_size):
+                        return line
+
+    # @staticmethod
+    # def select_box(frame_events, check_lines=True, check_words=True):
+    #     for event in frame_events:
+    #         # checks if you pressed right mouse button
+    #         if event.type == pg.MOUSEBUTTONDOWN and event.button == 3:
+    #             word_data = EditInput.check_click_word()
+    #             line_data = EditInput.check_click_line()
+    #             if word_data is not None and check_words:
+    #                 return word_data["WordText"]
+    #             elif line_data is not None and check_lines:
+    #                 return line_data["LineText"]
 
 
 def get_image(select_image="spa_text_glossary_perfect"):
@@ -302,14 +308,55 @@ def check_exit(frame_events):
             quit()
 
 
+class Other:
+    mode = 0
+
+    @staticmethod
+    def change_mode(frame_events):
+        for event in frame_events:
+            if event.type == pg.KEYDOWN:
+                if event.key == pg.K_RIGHT:
+                    Other.mode += 1
+                    Other.mode = Other.mode % 4
+                if event.key == pg.K_LEFT:
+                    Other.mode -= 1
+                    Other.mode = Other.mode % 4
+                print(Other.mode)
+
+
+    @staticmethod
+    def draw_inp_mode(frame_events):
+        temp_word = EditInput.check_click_word(frame_events, button=1)
+        temp_line = EditInput.check_click_word(frame_events, button=1)
+
+        if Other.mode == 1:
+            BoundingBox.draw_word()
+            if temp_word is not None:
+                print(temp_word["WordText"])
+
+        if Other.mode == 2:
+            BoundingBox.draw_word_line()
+            if temp_line is not None:
+                print(temp_line["LineText"])
+
+        if Other.mode == 3:
+            BoundingBox.draw_word()
+            BoundingBox.draw_word_line()
+            if temp_word is not None:
+                print(temp_word["WordText"])
+            if temp_line is not None:
+                print(temp_line["LineText"])
+
+
+
 def event_loop():
     frame_events = pg.event.get()
 
     check_exit(frame_events)
+    Other.change_mode(frame_events)
 
-    temp = EditInput.select_box(frame_events, check_words=False)
-    if temp is not None:
-        print(temp)
+    Other.draw_inp_mode(frame_events)
+
     # DragCheck.check_drag(frame_events)
 
     # print(EditBox.selected_box)
@@ -337,8 +384,7 @@ def main():
         game_screen.blit(pg_text_img, (0, 0))
 
         # DragCheck.draw_select_box()
-        BoundingBox.draw_word_line()
-        # BoundingBox.draw_word()
+
 
         event_loop()
         pg.display.flip()
