@@ -1,4 +1,6 @@
 import pygame as pg
+import pygame.freetype
+
 import json
 import requests
 from PIL import Image
@@ -66,7 +68,7 @@ class DataJson:
         payload = {'isOverlayRequired': True,
                    'apikey': api_key,
                    'language': language,
-                   'detectOrientation': False,
+                   'scale': True
                    }
         with open(filename, 'rb') as f:
             r = requests.post('https://api.ocr.space/parse/image',
@@ -166,18 +168,6 @@ class EditInput:
                     if button_click_check(button_size):
                         return line
 
-    # @staticmethod
-    # def select_box(frame_events, check_lines=True, check_words=True):
-    #     for event in frame_events:
-    #         # checks if you pressed right mouse button
-    #         if event.type == pg.MOUSEBUTTONDOWN and event.button == 3:
-    #             word_data = EditInput.check_click_word()
-    #             line_data = EditInput.check_click_line()
-    #             if word_data is not None and check_words:
-    #                 return word_data["WordText"]
-    #             elif line_data is not None and check_lines:
-    #                 return line_data["LineText"]
-
 
 def get_image(select_image="spa_text_glossary_perfect"):
     test_images = {
@@ -190,7 +180,7 @@ def get_image(select_image="spa_text_glossary_perfect"):
     image = Image.open(test_images[select_image])
     image.thumbnail((1000, 1000))
 
-    new_image = False
+    new_image = True
     if new_image:
         image.save('selected_image.jpg')
         DataJson.ocr_space_file('selected_image.jpg', language='spa')
@@ -206,37 +196,49 @@ def check_exit(frame_events):
 
 
 class Other:
-    mode = 0
+    draw_mode = 0
+    draw_text = False
+    ctrl_pressed = False
 
     @staticmethod
     def change_mode(frame_events):
         for event in frame_events:
-            if event.type == pg.KEYDOWN:
-                if event.key == pg.K_RIGHT:
-                    Other.mode += 1
-                    Other.mode = Other.mode % 4
-                if event.key == pg.K_LEFT:
-                    Other.mode -= 1
-                    Other.mode = Other.mode % 4
-                print(Other.mode)
+            if event.type == pg.KEYDOWN and event.key == pg.K_LCTRL:
+                Other.ctrl_pressed = True
+            if event.type == pg.KEYUP and event.key == pg.K_LCTRL:
+                Other.ctrl_pressed = False
 
+            if event.type == pg.KEYDOWN and Other.ctrl_pressed:
+                # display modes
+                if event.key == pg.K_RIGHT:
+                    Other.draw_mode += 1
+                    Other.draw_mode = Other.draw_mode % 4
+                if event.key == pg.K_LEFT:
+                    Other.draw_mode -= 1
+                    Other.draw_mode = Other.draw_mode % 4
+                if event.key == pg.K_s:
+                    Other.draw_text = True
+
+            if event.type == pg.KEYUP:
+                if event.key == pg.K_s:
+                    Other.draw_text = False
 
     @staticmethod
     def draw_inp_mode(frame_events):
         temp_word = EditInput.check_click_word(frame_events, button=1)
         temp_line = EditInput.check_click_line(frame_events, button=1)
 
-        if Other.mode == 1:
+        if Other.draw_mode == 1:
             BoundingBox.draw_word()
             if temp_word is not None:
                 print(temp_word["WordText"])
 
-        if Other.mode == 2:
+        if Other.draw_mode == 2:
             BoundingBox.draw_word_line()
             if temp_line is not None:
                 print(temp_line["LineText"])
 
-        if Other.mode == 3:
+        if Other.draw_mode == 3:
             BoundingBox.draw_word()
             BoundingBox.draw_word_line()
             if temp_word is not None:
@@ -244,6 +246,15 @@ class Other:
             elif temp_line is not None:
                 print(temp_line["LineText"])
 
+    @staticmethod
+    def draw_text_on_image():
+        if Other.draw_text:
+            game_screen.fill((255, 255, 255))
+            for word in DataJson.get_next_word():
+                img = font.render(word["WordText"], True, (255, 0, 0))
+                game_screen.blit(img, (word["Left"], word["Top"]))
+                # font.render_to(game_screen, (word["Left"], word["Top"]), word["WordText"], (0, 0, 0),
+                #                size=word["Height"])
 
 
 def event_loop():
@@ -253,7 +264,7 @@ def event_loop():
     Other.change_mode(frame_events)
 
     Other.draw_inp_mode(frame_events)
-
+    Other.draw_text_on_image()
     # DragCheck.check_drag(frame_events)
 
     # print(EditBox.selected_box)
@@ -262,7 +273,12 @@ def event_loop():
 def main():
     global game_screen
     global text_image_dir
+    global font
+
     text_image_dir = 'selected_image.jpg'
+
+    # loads, process and fetches the text from the input image
+    # get_image("spa_text_glossary_perfect")
 
     # the pygame initiation proses
     pg.init()
@@ -271,8 +287,7 @@ def main():
     pg.display.set_caption('Maze')
     clock = pg.time.Clock()
 
-    # loads, process and fetches the text from the input image
-    # get_image()
+    font = pygame.font.SysFont('Helvatical bold', 24)
 
     DataJson.get_data_form_json()
 
@@ -281,7 +296,6 @@ def main():
         game_screen.blit(pg_text_img, (0, 0))
 
         # DragCheck.draw_select_box()
-
 
         event_loop()
         pg.display.flip()
