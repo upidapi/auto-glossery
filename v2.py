@@ -106,109 +106,6 @@ class DataJson:
                 yield word
 
 
-# # writes and checks values for boxes
-# class EditBox:
-#     selected_box = None
-#     text = ''
-#
-#     @staticmethod
-#     def check_select_box(frame_events):
-#         for event in frame_events:
-#             if event.type == pg.MOUSEBUTTONDOWN and event.button == 3:
-#                 for i, box in enumerate(DataJson.data):
-#                     pos = box['bounding_box']
-#                     if pos['x1'] <= pg.mouse.get_pos()[0] <= pos['x2'] and \
-#                             pos['y1'] <= pg.mouse.get_pos()[1] <= pos['y2']:
-#                         print(f'"{EditBox.text}"')
-#
-#                         EditBox.text = box['text']
-#                         EditBox.selected_box = i
-#
-#             if event.type == pg.KEYDOWN and EditBox.selected_box is not None:
-#                 if event.key == pg.K_DELETE:
-#                     DataJson.data.pop(EditBox.selected_box)
-#                     EditBox.selected_box = None
-#                     EditBox.text = ''
-#
-#                 elif event.key == pg.K_RETURN:
-#                     DataJson.data[EditBox.selected_box]['text'] = EditBox.text
-#                     EditBox.selected_box = None
-#                     EditBox.text = ''
-#
-#                 elif event.key == pg.K_BACKSPACE:
-#                     EditBox.text = EditBox.text[0:-1]
-#
-#                 else:
-#                     EditBox.text += event.unicode
-#
-#                 print(f'"{EditBox.text}"')
-#
-#
-# # makes new empty boxes
-# class DragCheck:
-#     # definitions
-#     drag_start = (0, 0)
-#     start = (0, 0)
-#     size = (0, 0)
-#     dragging = False
-#     draw_box_stick = False
-#
-#     @staticmethod
-#     def check_drag(frame_events):
-#         for event in frame_events:
-#             if event.type == pg.MOUSEBUTTONDOWN and event.button == 2:
-#                 DragCheck.dragging = True
-#                 DragCheck.drag_start = pg.mouse.get_pos()
-#
-#             if event.type == pg.MOUSEBUTTONUP and event.button == 2:
-#                 DragCheck.dragging = False
-#                 DragCheck.draw_box_stick = True
-#
-#                 DragCheck.size = (
-#                     abs(DragCheck.drag_start[0] - pg.mouse.get_pos()[0]),
-#                     abs(DragCheck.drag_start[1] - pg.mouse.get_pos()[1])
-#                 )
-#
-#                 DragCheck.start = (
-#                     min(DragCheck.drag_start[0], pg.mouse.get_pos()[0]),
-#                     min(DragCheck.drag_start[1], pg.mouse.get_pos()[1])
-#                 )
-#
-#             if event.type == pg.KEYDOWN:
-#                 if event.key == pg.K_ESCAPE:
-#                     DragCheck.dragging = False
-#                     DragCheck.draw_box_stick = False
-#
-#                 elif event.key == pg.K_RETURN and DragCheck.draw_box_stick:
-#                     DragCheck.dragging = False
-#                     DragCheck.draw_box_stick = False
-#                     DataJson.data.append({"text": "",
-#                                           "bounding_box": {"x1": DragCheck.start[0],
-#                                                            "y1": DragCheck.start[1],
-#                                                            "x2": DragCheck.start[0] + DragCheck.size[0],
-#                                                            "y2": DragCheck.start[1] + DragCheck.size[1]
-#                                                            }})
-#
-#                     # selects the new box (the new boxes pos is the las of the list)
-#                     EditBox.selected_box = len(DataJson.data) - 1
-#                     print(EditBox.selected_box)
-#
-#     @staticmethod
-#     def draw_select_box():
-#         if DragCheck.dragging:
-#             draw_rgba_rect(game_screen, (200, 200, 255, 128),
-#                            pg.mouse.get_pos(),
-#                            DragCheck.drag_start,
-#                            outline_width=1, outline_color=(0, 100, 255))
-#
-#         elif DragCheck.draw_box_stick:
-#             draw_rgba_rect(game_screen, (200, 200, 255, 128),
-#                            (DragCheck.start[0] + DragCheck.size[0],
-#                             DragCheck.start[1] + DragCheck.size[1]),
-#                            DragCheck.drag_start,
-#                            outline_width=1, outline_color=(0, 100, 255))
-
-
 class BoundingBox:
     @staticmethod
     def get_word_line_size(line):
@@ -327,7 +224,7 @@ class Other:
     @staticmethod
     def draw_inp_mode(frame_events):
         temp_word = EditInput.check_click_word(frame_events, button=1)
-        temp_line = EditInput.check_click_word(frame_events, button=1)
+        temp_line = EditInput.check_click_line(frame_events, button=1)
 
         if Other.mode == 1:
             BoundingBox.draw_word()
@@ -344,7 +241,7 @@ class Other:
             BoundingBox.draw_word_line()
             if temp_word is not None:
                 print(temp_word["WordText"])
-            if temp_line is not None:
+            elif temp_line is not None:
                 print(temp_line["LineText"])
 
 
@@ -375,7 +272,7 @@ def main():
     clock = pg.time.Clock()
 
     # loads, process and fetches the text from the input image
-    get_image()
+    # get_image()
 
     DataJson.get_data_form_json()
 
