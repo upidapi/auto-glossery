@@ -250,11 +250,14 @@ class Other:
     def draw_text_on_image():
         if Other.draw_text:
             game_screen.fill((255, 255, 255))
-            for word in DataJson.get_next_word():
-                img = font.render(word["WordText"], True, (255, 0, 0))
-                game_screen.blit(img, (word["Left"], word["Top"]))
-                # font.render_to(game_screen, (word["Left"], word["Top"]), word["WordText"], (0, 0, 0),
-                #                size=word["Height"])
+            # for word in DataJson.get_next_word():
+            #     img = font.render(word["WordText"], True, (255, 0, 0))
+            #     game_screen.blit(img, (word["Left"], word["Top"]))
+            #     # font.render_to(game_screen, (word["Left"], word["Top"]), word["WordText"], (0, 0, 0),
+            #     #                size=word["Height"])
+            for line in DataJson.get_next_line():
+                img = font.render(line["LineText"], True, (0, 0, 0))
+                game_screen.blit(img, BoundingBox.get_word_line_size(line)[0:2])
 
 
 def event_loop():
