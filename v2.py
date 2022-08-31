@@ -1,10 +1,11 @@
 import pygame as pg
-import pygame.freetype
-
 import json
 import requests
 from PIL import Image
 
+# from autocorrect import Speller
+# spell = Speller()
+# print(spell("I'm not sleapy and tehre is no place I'm giong to."))
 
 def wh_to_chords(wh) -> tuple[int, int, int, int]:
     x, y, width, height = wh
@@ -107,6 +108,24 @@ class DataJson:
             for word in words:
                 yield word
 
+    @staticmethod
+    def get_image(select_image="spa_text_glossary_perfect"):
+        test_images = {
+            "eng_text_page": r"C:\Users\videw\Downloads\book page.jpg",
+            "spa_text_glossary_rotated": r"C:\Users\videw\Downloads\IMG_2439.jpg",
+            "spa_text_glossary_perfect": r"C:\Users\videw\Downloads\IMG_2438.jpg",
+            "spa_text_glossary_inprefect": r"C:\Users\videw\Downloads\IMG_2421.png"
+        }
+
+        image = Image.open(test_images[select_image])
+        image.thumbnail((1000, 1000))
+
+        new_image = True
+        if new_image:
+            image.save('selected_image.jpg')
+            DataJson.ocr_space_file('selected_image.jpg', language='spa')
+            DataJson.save_data_to_jason()
+
 
 class BoundingBox:
     @staticmethod
@@ -152,39 +171,79 @@ class EditInput:
             # checks if you pressed x mouse button
             if event.type == pg.MOUSEBUTTONDOWN and event.button == button:
                 # checks if you clicked a word
-                for word in DataJson.get_next_word():
+                for i, word in enumerate(DataJson.get_next_word()):
                     button_size = wh_to_chords((word["Left"], word["Top"], word["Width"], word["Height"]))
                     if button_click_check(button_size):
-                        return word
+                        return {'word': word, 'index': i}
 
     @staticmethod
     def check_click_line(frame_events, button=1):
         for event in frame_events:
             # checks if you pressed x mouse button
             if event.type == pg.MOUSEBUTTONDOWN and event.button == button:
-                for line in DataJson.get_next_line():
+                for i, line in enumerate(DataJson.get_next_line()):
                     # checks if you clicked a line
                     button_size = BoundingBox.get_word_line_size(line)
                     if button_click_check(button_size):
-                        return line
+                        return {'line': line, 'index': i}
 
+    new_text = ''
+    text_top_pos = [0, 0]
+    typing = False
+    select_line = False
 
-def get_image(select_image="spa_text_glossary_perfect"):
-    test_images = {
-        "eng_text_page": r"C:\Users\videw\Downloads\book page.jpg",
-        "spa_text_glossary_rotated": r"C:\Users\videw\Downloads\IMG_2439.jpg",
-        "spa_text_glossary_perfect": r"C:\Users\videw\Downloads\IMG_2438.jpg",
-        "spa_text_glossary_inprefect": r"C:\Users\videw\Downloads\IMG_2421.png"
-    }
+    @staticmethod
+    def make_new_word(frame_events):
+        if EditInput.select_line:
+            for event in frame_events:
+                if event.type == pg.KEYDOWN and event.key == pg.K_RETURN:
+                    # todo make new line withe text data
+                    select_line = False
 
-    image = Image.open(test_images[select_image])
-    image.thumbnail((1000, 1000))
+            line_data = EditInput.check_click_line(frame_events, button=2)
+            if line_data is not None:
+                line_data['line']["Words"].append({
+                    "WordText": EditInput.new_text,
+                    "Left": EditInput.text_top_pos[0],
+                    "Top": EditInput.text_top_pos[1],
+                    "Height": 10,
+                    "Width": 10
+                })
+                DataJson.data[line_data['index']] = line_data
+                select_line = False
 
-    new_image = True
-    if new_image:
-        image.save('selected_image.jpg')
-        DataJson.ocr_space_file('selected_image.jpg', language='spa')
-        DataJson.save_data_to_jason()
+        else:
+            for event in frame_events:
+                if event.type == pg.MOUSEBUTTONDOWN and event.button == 2:
+                    EditInput.typing = True
+                    EditInput.text_top_pos = pg.mouse.get_pos()
+
+                if event.type == pg.KEYDOWN:
+
+                    # Check for backspace
+                    if event.key == pg.K_BACKSPACE:
+
+                        # get text input from 0 to -1 i.e. end.
+                        EditInput.new_text = EditInput.new_text[:-1]
+
+                    elif event.key == pg.K_RETURN:
+                        EditInput.select_line = True
+
+                    elif event.key == pg.K_ESCAPE:
+                        EditInput.typing = False
+
+                    # Unicode standard is used for string
+                    # formation
+                    else:
+                        character = event.unicode
+                        if character.isalpha() or character.isalnum():
+                            EditInput.new_text += event.unicode
+
+    @staticmethod
+    def draw_new_word():
+        if EditInput.typing or EditInput.select_line:
+            img = font.render(EditInput.new_text, True, (0, 0, 0))
+            game_screen.blit(img, EditInput.text_top_pos)
 
 
 def check_exit(frame_events):
@@ -217,11 +276,7 @@ class Other:
                     Other.draw_mode -= 1
                     Other.draw_mode = Other.draw_mode % 4
                 if event.key == pg.K_s:
-                    Other.draw_text = True
-
-            if event.type == pg.KEYUP:
-                if event.key == pg.K_s:
-                    Other.draw_text = False
+                    Other.draw_text = not Other.draw_text
 
     @staticmethod
     def draw_inp_mode(frame_events):
@@ -269,7 +324,8 @@ def event_loop():
     Other.draw_inp_mode(frame_events)
     Other.draw_text_on_image()
     # DragCheck.check_drag(frame_events)
-
+    EditInput.make_new_word(frame_events)
+    EditInput.draw_new_word()
     # print(EditBox.selected_box)
 
 
@@ -290,7 +346,7 @@ def main():
     pg.display.set_caption('Maze')
     clock = pg.time.Clock()
 
-    font = pygame.font.SysFont('Helvatical bold', 24)
+    font = pg.font.SysFont('Helvatical bold', 24)
 
     DataJson.get_data_form_json()
 
