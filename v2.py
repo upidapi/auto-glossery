@@ -7,6 +7,7 @@ from PIL import Image
 # spell = Speller()
 # print(spell("I'm not sleapy and tehre is no place I'm giong to."))
 
+
 def wh_to_chords(wh) -> tuple[int, int, int, int]:
     x, y, width, height = wh
     return int(x), int(y), int(x + width), int(y + height)
@@ -166,6 +167,15 @@ class BoundingBox:
 
 class EditInput:
     @staticmethod
+    def sort_text(line):
+        line["Words"].sort(key=lambda i: i["Left"])
+        text = ''
+        for word in line['Words']:
+            text += (word["WordText"] + ' ')
+
+        return text.strip()
+
+    @staticmethod
     def check_click_word(frame_events, button=1):
         for event in frame_events:
             # checks if you pressed x mouse button
@@ -187,6 +197,18 @@ class EditInput:
                     if button_click_check(button_size):
                         return {'line': line, 'index': i}
 
+    selected_word = None
+
+    @staticmethod
+    def get_selected(frame_events):
+        word_data = EditInput.check_click_word(frame_events, button=1)
+        if word_data is not None:
+            EditInput.selected_word = word_data['index']
+
+        for event in frame_events:
+            if event.type == pg.KEYDOWN and event.KEY == pg.K_ESCAPE:
+                EditInput.select_word = None
+
     new_text = ''
     text_top_pos = [0, 0]
     typing = False
@@ -197,20 +219,44 @@ class EditInput:
         if EditInput.select_line:
             for event in frame_events:
                 if event.type == pg.KEYDOWN and event.key == pg.K_RETURN:
-                    # todo make new line withe text data
-                    select_line = False
+                    img = font.render(EditInput.new_text, True, (0, 0, 0))
+                    size = img.get_size()
+
+                    DataJson.data["ParsedResults"][0]["TextOverlay"]["Lines"].append(
+                        {
+                            "LineText": EditInput.new_text,
+                            "Words": [
+                                {
+                                    "WordText": EditInput.new_text,
+                                    "Left": EditInput.text_top_pos[0],
+                                    "Top": EditInput.text_top_pos[1],
+                                    "Height": size[1],
+                                    "Width": size[0]
+                                }
+                            ],
+                            "MaxHeight": size[1],
+                            "MinTop": size[0]
+                        },
+                    )
+                    EditInput.select_line = False
+                    EditInput.new_text = ''
 
             line_data = EditInput.check_click_line(frame_events, button=2)
             if line_data is not None:
+                img = font.render(EditInput.new_text, True, (0, 0, 0))
+                size = img.get_size()
                 line_data['line']["Words"].append({
                     "WordText": EditInput.new_text,
                     "Left": EditInput.text_top_pos[0],
                     "Top": EditInput.text_top_pos[1],
-                    "Height": 10,
-                    "Width": 10
+                    "Height": size[1],
+                    "Width": size[0]
                 })
                 DataJson.data[line_data['index']] = line_data
-                select_line = False
+                line_data['line']['LineText'] = EditInput.sort_text(line_data['line'])
+
+                EditInput.select_line = False
+                EditInput.new_text = ''
 
         else:
             for event in frame_events:
@@ -218,7 +264,7 @@ class EditInput:
                     EditInput.typing = True
                     EditInput.text_top_pos = pg.mouse.get_pos()
 
-                if event.type == pg.KEYDOWN:
+                if event.type == pg.KEYDOWN and EditInput.typing:
 
                     # Check for backspace
                     if event.key == pg.K_BACKSPACE:
@@ -228,21 +274,27 @@ class EditInput:
 
                     elif event.key == pg.K_RETURN:
                         EditInput.select_line = True
+                        EditInput.typing = False
 
                     elif event.key == pg.K_ESCAPE:
                         EditInput.typing = False
+                        EditInput.new_text = ''
 
                     # Unicode standard is used for string
                     # formation
                     else:
                         character = event.unicode
-                        if character.isalpha() or character.isalnum():
+                        allowed_characters = '1234567890abcdefghijklmnopqrstuvwxyzåäöñè ,.()!?'
+                        if character in allowed_characters:
                             EditInput.new_text += event.unicode
 
     @staticmethod
     def draw_new_word():
-        if EditInput.typing or EditInput.select_line:
+        if EditInput.typing:
             img = font.render(EditInput.new_text, True, (0, 0, 0))
+            game_screen.blit(img, EditInput.text_top_pos)
+        if EditInput.select_line:
+            img = font.render(EditInput.new_text, True, (255, 0, 0))
             game_screen.blit(img, EditInput.text_top_pos)
 
 
@@ -286,20 +338,20 @@ class Other:
         if Other.draw_mode == 1:
             BoundingBox.draw_word()
             if temp_word is not None:
-                print(temp_word["WordText"])
+                print(temp_word["word"]["WordText"])
 
         if Other.draw_mode == 2:
             BoundingBox.draw_word_line()
             if temp_line is not None:
-                print(temp_line["LineText"])
+                print(temp_line["line"]["LineText"])
 
         if Other.draw_mode == 3:
             BoundingBox.draw_word()
             BoundingBox.draw_word_line()
             if temp_word is not None:
-                print(temp_word["WordText"])
+                print(temp_word["word"]["WordText"])
             elif temp_line is not None:
-                print(temp_line["LineText"])
+                print(temp_line["line"]["LineText"])
 
     @staticmethod
     def draw_text_on_image():
