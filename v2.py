@@ -47,69 +47,66 @@ def draw_rgba_rect(surface, color, start, size, outline_width=0, outline_color=(
     pg.draw.rect(surface, outline_color, start + size, outline_width)
 
 
-# noinspection PyTypeChecker
-class SimplifiedDataFetch:
-    # get modify or delete data from the master data in a pythonic way
-    def __init__(self):
-        with open("sample.json") as jsonFile:
-            json_object = json.load(jsonFile)
-            jsonFile.close()
-
-        self.data = json.loads(json_object)
-
-    # ["ParsedResults"][0]["TextOverlay"]["Lines"][index]['Words'][EditInput.selected_word['word']]['WordText']
-    # format:
-    # "a" is a key for the dict
-    # i and j are indexes from lists
-    # data[i: int]                 ->                            lines[i]
-    # data[i: int,         a: str] -> line[j]               from lines[i]
-    # data[i: int, j: int]         ->              words[j] from lines[i]
-    # data[i: int, j: int, a: str] -> word[a] from words[j] from lines[i]
-
-    def __getitem__(self, index):
-        if type(index) is int:
-            return self.data["ParsedResults"][0]["TextOverlay"]["Lines"][index]
-
-        elif type(index[1]) is str:
-            return self.data["ParsedResults"][0]["TextOverlay"]["Lines"][index[0]][index[1]]
-
-        elif type(index[1]) is int:
-            if len(index) == 2:
-                return self.data["ParsedResults"][0]["TextOverlay"]["Lines"][index[0]]['Words'][index[1]]
-
-            else:
-                return self.data["ParsedResults"][0]["TextOverlay"]["Lines"][index[0]]['Words'][index[1]][index[2]]
-
-    def __delitem__(self, key):
-        if type(key) is int:
-            return self.data["ParsedResults"][0]["TextOverlay"]["Lines"][key]
-
-        elif type(key[1]) is str:
-            return self.data["ParsedResults"][0]["TextOverlay"]["Lines"][key[0]][key[1]]
-
-        elif type(key[1]) is int:
-            if len(key) == 2:
-                return self.data["ParsedResults"][0]["TextOverlay"]["Lines"][key[0]]['Words'][key[1]]
-
-            else:
-                return self.data["ParsedResults"][0]["TextOverlay"]["Lines"][key[0]]['Words'][key[1]][key[2]]
-
-    def __setitem__(self, key, value):
-        if type(key) is int:
-            self.data["ParsedResults"][0]["TextOverlay"]["Lines"][key] = value
-
-        elif type(key[1]) is str:
-            self.data["ParsedResults"][0]["TextOverlay"]["Lines"][key[0]][key[1]] = value
-
-        elif type(key[1]) is int:
-            if len(key) == 2:
-                self.data["ParsedResults"][0]["TextOverlay"]["Lines"][key[0]]['Words'][key[1]] = value
-
-            else:
-                self.data["ParsedResults"][0]["TextOverlay"]["Lines"][key[0]]['Words'][key[1]][key[2]] = value
-
-
-data = SimplifiedDataFetch()
+# # noinspection PyTypeChecker
+# class SimplifiedDataFetch:
+#     # get modify or delete data from the master data in a pythonic way
+#     def __init__(self):
+#         with open("sample.json") as jsonFile:
+#             json_object = json.load(jsonFile)
+#             jsonFile.close()
+#
+#         self.data = json.loads(json_object)
+#
+#     # ["ParsedResults"][0]["TextOverlay"]["Lines"][index]['Words'][EditInput.selected_word['word']]['WordText']
+#     # format:
+#     # "a" is a key for the dict
+#     # i and j are indexes from lists
+#     # data[i: int]                 ->                            lines[i]
+#     # data[i: int,         a: str] -> line[j]               from lines[i]
+#     # data[i: int, j: int]         ->              words[j] from lines[i]
+#     # data[i: int, j: int, a: str] -> word[a] from words[j] from lines[i]
+#
+#     def __getitem__(self, index):
+#         if type(index) is int:
+#             return self.data["ParsedResults"][0]["TextOverlay"]["Lines"][index]
+#
+#         elif type(index[1]) is str:
+#             return self.data["ParsedResults"][0]["TextOverlay"]["Lines"][index[0]][index[1]]
+#
+#         elif type(index[1]) is int:
+#             if len(index) == 2:
+#                 return self.data["ParsedResults"][0]["TextOverlay"]["Lines"][index[0]]['Words'][index[1]]
+#
+#             else:
+#                 return self.data["ParsedResults"][0]["TextOverlay"]["Lines"][index[0]]['Words'][index[1]][index[2]]
+#
+#     def __delitem__(self, key):
+#         if type(key) is int:
+#             return self.data["ParsedResults"][0]["TextOverlay"]["Lines"][key]
+#
+#         elif type(key[1]) is str:
+#             return self.data["ParsedResults"][0]["TextOverlay"]["Lines"][key[0]][key[1]]
+#
+#         elif type(key[1]) is int:
+#             if len(key) == 2:
+#                 return self.data["ParsedResults"][0]["TextOverlay"]["Lines"][key[0]]['Words'][key[1]]
+#
+#             else:
+#                 return self.data["ParsedResults"][0]["TextOverlay"]["Lines"][key[0]]['Words'][key[1]][key[2]]
+#
+#     def __setitem__(self, key, value):
+#         if type(key) is int:
+#             self.data["ParsedResults"][0]["TextOverlay"]["Lines"][key] = value
+#
+#         elif type(key[1]) is str:
+#             self.data["ParsedResults"][0]["TextOverlay"]["Lines"][key[0]][key[1]] = value
+#
+#         elif type(key[1]) is int:
+#             if len(key) == 2:
+#                 self.data["ParsedResults"][0]["TextOverlay"]["Lines"][key[0]]['Words'][key[1]] = value
+#
+#             else:
+#                 self.data["ParsedResults"][0]["TextOverlay"]["Lines"][key[0]]['Words'][key[1]][key[2]] = value
 
 
 class Listener:
@@ -175,8 +172,14 @@ class DataJson:
                               data=payload,
                               )
 
-        # removes most of th unnecessary code
-        return r.content.decode()["ParsedResults"][0]["TextOverlay"]["Lines"]
+        # removes most of the unnecessary code
+        x = r.content.decode()
+        x = json.load(x)
+        print(x)
+        print(type(x))
+        # x is a str for some reason (might be a json obj)
+        x = x["ParsedResults"][0]["TextOverlay"]["Lines"]
+        return x
 
     @staticmethod
     def get_data():
@@ -188,7 +191,7 @@ class DataJson:
 
     @staticmethod
     def save_data_to_jason():
-        json_object = json.dumps(data, indent=4)
+        json_object = json.dumps(DataJson.data, indent=4)
         with open("sample.json", "w") as outfile:
             outfile.write(json_object)
 
@@ -294,34 +297,19 @@ class EditInput:
                     if button_click_check(button_size):
                         return {'line': line, 'index': i}
 
-    new_text = ''
-
-    selected_word = None
-
     @staticmethod
-    def get_selected(frame_events):
-        word_data = EditInput.check_click_word(frame_events, button=1)
-        if word_data is not None:
-            EditInput.selected_word = word_data['index']
-
+    def delete(frame_events, selected_line, selected_word):
         for event in frame_events:
-            if event.type == pg.KEYDOWN and event.KEY == pg.K_ESCAPE:
-                EditInput.select_word = None
+            if event.type == pg.KEYDOWN and event.KEY == pg.K_DELETE:
+                # noinspection PyTypeChecker
+                del DataJson.data[selected_line]['Words'][selected_word]
 
     @staticmethod
-    def del_selected(frame_events):
-        if EditInput.selected_word is not None:
-            for event in frame_events:
-                if event.type == pg.KEYDOWN and event.KEY == pg.K_DELETE:
-                    del DataJson.data["ParsedResults"][0]["TextOverlay"]["Lines"] \
-                        [EditInput.selected_word['line']]['Words'][EditInput.selected_word['word']]
-
-    @staticmethod
-    def edit_selected(frame_events):
+    def edit(frame_events, selected_line, selected_word):
         for event in frame_events:
             if event.type == pg.KEYDOWN and event.KEY == pg.K_RETURN:
-                DataJson.data["ParsedResults"][0]["TextOverlay"]["Lines"][EditInput.selected_word['line']] \
-                    ['Words'][EditInput.selected_word['word']]['WordText'] = Listener.get_text()
+                # noinspection PyTypeChecker
+                DataJson.data[selected_line]['Words'][selected_word]['WordText'] = Listener.get_text()
 
     text_top_pos = [0, 0]
     typing = False
@@ -348,10 +336,11 @@ class EditInput:
                 selected_word = None
 
         if selected_word is not None and select == 'word':
-            del_selected(frame_events)
+            EditInput.edit(frame_events, selected_line, selected_word)
+            EditInput.delete(frame_events, selected_line, selected_word)
 
         elif selected_line is not None and select == 'line':
-            del_selected(frame_events)
+            EditInput.delete(frame_events, selected_line, selected_word)
 
     @staticmethod
     def make_new_word(frame_events):
@@ -361,7 +350,7 @@ class EditInput:
                     img = font.render(Listener.get_text(), True, (0, 0, 0))
                     size = img.get_size()
 
-                    DataJson.data["ParsedResults"][0]["TextOverlay"]["Lines"].append(
+                    DataJson.data.append(
                         {
                             "LineText": Listener.get_text(),
                             "Words": [
@@ -515,7 +504,7 @@ def main():
     text_image_dir = 'selected_image.jpg'
 
     # loads, process and fetches the text from the input image
-    # get_image("spa_text_glossary_perfect")
+    DataJson.get_image("spa_text_glossary_perfect")
 
     # the pygame initiation proses
     pg.init()
