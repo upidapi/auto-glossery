@@ -172,25 +172,25 @@ class DataJson:
                               data=payload,
                               )
 
-        # removes most of the unnecessary code
-        x = r.content.decode()
-        x = json.load(x)
-        print(x)
-        print(type(x))
-        # x is a str for some reason (might be a json obj)
-        x = x["ParsedResults"][0]["TextOverlay"]["Lines"]
-        return x
+        # decode
+        return_data = r.content.decode()
+        # from json-str to python-array
+        return_data = json.loads(return_data)
+        # remove unnecessary data
+        DataJson.data = return_data["ParsedResults"][0]["TextOverlay"]["Lines"]
+
+        DataJson.save_data_to_jason()
 
     @staticmethod
     def get_data():
         with open("sample.json") as jsonFile:
-            json_object = json.load(jsonFile)
+            # converts json-document to python-array
+            DataJson.data = json.load(jsonFile)
             jsonFile.close()
-
-        DataJson.data = json.loads(json_object)
 
     @staticmethod
     def save_data_to_jason():
+        # converts python-array to json-document with indent 4
         json_object = json.dumps(DataJson.data, indent=4)
         with open("sample.json", "w") as outfile:
             outfile.write(json_object)
@@ -504,8 +504,8 @@ def main():
     text_image_dir = 'selected_image.jpg'
 
     # loads, process and fetches the text from the input image
-    DataJson.get_image("spa_text_glossary_perfect")
-
+    # DataJson.get_image("spa_text_glossary_perfect")
+    DataJson.get_data()
     # the pygame initiation proses
     pg.init()
     pg_text_img = pg.image.load(text_image_dir)
