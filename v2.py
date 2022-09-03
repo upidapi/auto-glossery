@@ -48,39 +48,89 @@ def draw_rgba_rect(surface, color, start, size, outline_width=0, outline_color=(
 
 
 class Listener:
-    listener = []
+    class Text:
+        text = ''
 
-    text = ''
+        @staticmethod
+        def save_text_input(frame_event):
+            for event in frame_event:
+                if event.type == pg.KEYDOWN:
+                    print('hello')
 
-    @staticmethod
-    def save_text_input(frame_event):
-        for event in frame_event:
-            if event.type == pg.KEYDOWN:
+                    # Check for backspace
+                    if event.key == pg.K_BACKSPACE:
+                        print(2)
 
-                # Check for backspace
-                if event.key == pg.K_BACKSPACE:
+                        # get text input from 0 to -1 i.e. end.
+                        Listener.Text.text = Listener.Text.text[:-1]
 
-                    # get text input from 0 to -1 i.e. end.
-                    Listener.text = Listener.text[:-1]
+                    # Unicode standard is used for string
+                    # formation
+                    else:
+                        character = event.unicode
+                        allowed_characters = '1234567890abcdefghijklmnopqrstuvwxyzåäöñè ,.()!?'
+                        if character in allowed_characters:
+                            Listener.Text.text += event.unicode
 
-                # Unicode standard is used for string
-                # formation
-                else:
-                    character = event.unicode
-                    allowed_characters = '1234567890abcdefghijklmnopqrstuvwxyzåäöñè ,.()!?'
-                    if character in allowed_characters:
-                        Listener.text += event.unicode
+        @staticmethod
+        def get_text():
+            return Listener.Text.text
 
-    @staticmethod
-    def get_text():
-        return Listener.text
+        @staticmethod
+        def set_text(text=''):
+            return_text = Listener.Text.text
+            Listener.Text.text = text
+            return return_text
 
-    @staticmethod
-    def set_text(text=''):
-        return_text = Listener.text
-        Listener.text = text
-        return return_text
+    class Mouse:
+        listeners = []
 
+        def __init__(self, button, *, on_click_word, on_click_line, on_click_only_line):
+            self.button = button
+            self.on_click_word = on_click_word
+            self.on_click_line = on_click_line
+            self.on_click_only_line = on_click_only_line
+
+            Listener.Mouse.listeners.append(self)
+
+        @staticmethod
+        def check_click_word(frame_events, button=1):
+            for event in frame_events:
+                # checks if you pressed x mouse button
+                if event.type == pg.MOUSEBUTTONDOWN and event.button == button:
+                    # checks if you clicked a word
+                    for i, line in enumerate(DataJson.data):
+                        words = line["Words"]
+                        for j, word in enumerate(words):
+                            button_size = wh_to_chords((word["Left"], word["Top"], word["Width"], word["Height"]))
+                            if button_click_check(button_size):
+                                return {'word': word, 'index': {'word': j, 'line': i}}
+
+        @staticmethod
+        def check_click_line(frame_events, button=1):
+            for event in frame_events:
+                # checks if you pressed x mouse button
+                if event.type == pg.MOUSEBUTTONDOWN and event.button == button:
+                    for i, line in enumerate(DataJson.data):
+                        # checks if you clicked a line
+                        button_size = BoundingBox.get_word_line_size(line)
+                        if button_click_check(button_size):
+                            return {'line': line, 'index': i}
+
+        def combine(self, frame_events):
+            word = Listener.Mouse.check_click_word(frame_events, self.button)
+            line = Listener.Mouse.check_click_line(frame_events, self.button)
+            if line and word:
+                self.on_click_line(line)
+            elif word:
+                self.on_click_word(word)
+            elif line:
+                self.on_click_only_line(line)
+
+        @classmethod
+        def listen(cls, frame_events):
+            for obj in cls.listeners:
+                obj.combine(frame_events)
 
 # noinspection PyTypeChecker
 class DataJson:
@@ -223,30 +273,6 @@ class EditInput:
 
         return text.strip()
 
-    @staticmethod
-    def check_click_word(frame_events, button=1):
-        for event in frame_events:
-            # checks if you pressed x mouse button
-            if event.type == pg.MOUSEBUTTONDOWN and event.button == button:
-                # checks if you clicked a word
-                for i, line in enumerate(DataJson.data):
-                    words = line["Words"]
-                    for j, word in enumerate(words):
-                        button_size = wh_to_chords((word["Left"], word["Top"], word["Width"], word["Height"]))
-                        if button_click_check(button_size):
-                            return {'word': word, 'index': {'word': j, 'line': i}}
-
-    @staticmethod
-    def check_click_line(frame_events, button=1):
-        for event in frame_events:
-            # checks if you pressed x mouse button
-            if event.type == pg.MOUSEBUTTONDOWN and event.button == button:
-                for i, line in enumerate(DataJson.data):
-                    # checks if you clicked a line
-                    button_size = BoundingBox.get_word_line_size(line)
-                    if button_click_check(button_size):
-                        return {'line': line, 'index': i}
-
     selected_line = None
     selected_word = None
 
@@ -273,7 +299,7 @@ class EditInput:
             if event.type == pg.KEYDOWN and event.key == pg.K_RETURN:
                 # noinspection PyTypeChecker
                 DataJson.data[EditInput.selected_line]['Words'][EditInput.selected_word]['WordText']\
-                    = Listener.get_text()
+                    = Listener.Text.get_text()
 
                 # unselect
                 EditInput.selected_word = None
@@ -314,7 +340,7 @@ class EditInput:
                             # only draw the selected word in red
                             if word == DataJson.get_selected():
                                 # adds a space to account for the space between words
-                                img = font.render(Listener.get_text() + ' ', True, (255, 0, 0))
+                                img = font.render(Listener.Text.get_text() + ' ', True, (255, 0, 0))
 
                             else:
                                 # adds a space to account for the space between words
@@ -354,7 +380,7 @@ class EditInput:
         # checks if you have selected a thing
         if EditInput.selected_word is not None and (select == 'word' or select == 'both'):
             # noinspection PyTypeChecker
-            Listener.set_text(DataJson.get_selected()['WordText'])
+            Listener.Text.set_text(DataJson.get_selected()['WordText'])
             EditInput.edit(frame_events)
 
             EditInput.delete(frame_events, EditInput.selected_word)
@@ -368,78 +394,6 @@ class EditInput:
 
         else:
             EditInput.draw_words(None)
-
-    # text_top_pos = [0, 0]
-    # typing = False
-    #
-    # @staticmethod
-    # def make_new_word(frame_events):
-    #     if EditInput.select_line:
-    #         for event in frame_events:
-    #             if event.type == pg.KEYDOWN and event.key == pg.K_RETURN:
-    #                 img = font.render(Listener.get_text(), True, (0, 0, 0))
-    #                 size = img.get_size()
-    #
-    #                 DataJson.data.append(
-    #                     {
-    #                         "LineText": Listener.get_text(),
-    #                         "Words": [
-    #                             {
-    #                                 "WordText": Listener.get_text(),
-    #                                 "Left": EditInput.text_top_pos[0],
-    #                                 "Top": EditInput.text_top_pos[1],
-    #                                 "Height": size[1],
-    #                                 "Width": size[0]
-    #                             }
-    #                         ],
-    #                         "MaxHeight": size[1],
-    #                         "MinTop": size[0]
-    #                     },
-    #                 )
-    #                 EditInput.select_line = False
-    #                 Listener.set_text()
-    #
-    #         line_data = EditInput.check_click_line(frame_events, button=2)
-    #         if line_data is not None:
-    #             img = font.render(Listener.get_text(), True, (0, 0, 0))
-    #             size = img.get_size()
-    #             line_data['line']["Words"].append({
-    #                 "WordText": Listener.get_text(),
-    #                 "Left": EditInput.text_top_pos[0],
-    #                 "Top": EditInput.text_top_pos[1],
-    #                 "Height": size[1],
-    #                 "Width": size[0]
-    #             })
-    #             DataJson.data[line_data['index']] = line_data
-    #             line_data['line']['LineText'] = EditInput.sort_text(line_data['line'])
-    #
-    #             EditInput.select_line = False
-    #             Listener.set_text()
-    #
-    #     else:
-    #         for event in frame_events:
-    #             if event.type == pg.MOUSEBUTTONDOWN and event.button == 2:
-    #                 EditInput.typing = True
-    #                 EditInput.text_top_pos = pg.mouse.get_pos()
-    #
-    #             if event.type == pg.KEYDOWN and EditInput.typing:
-    #
-    #                 if event.key == pg.K_RETURN:
-    #                     EditInput.select_line = True
-    #                     EditInput.typing = False
-    #
-    #                 elif event.key == pg.K_ESCAPE:
-    #                     EditInput.typing = False
-    #                     Listener.set_text()
-    #
-    # @staticmethod
-    # def draw_new_word():
-    #     if EditInput.typing:
-    #         img = font.render(Listener.get_text(), True, (0, 0, 0))
-    #         game_screen.blit(img, EditInput.text_top_pos)
-    #     if EditInput.selected_line:
-    #         img = font.render(Listener.get_text(), True, (255, 0, 0))
-    #         game_screen.blit(img, EditInput.text_top_pos)
 
 
 def check_exit(frame_events):
@@ -518,11 +472,13 @@ def event_loop():
 
     Other.change_mode(frame_events)
 
-    Listener.save_text_input(frame_events)
+    Listener.Text.save_text_input(frame_events)
 
     EditInput.selection_action(frame_events, 'both')
 
     Other.draw_inp_mode(frame_events)
+
+    # print(Listener.text)
 
 
 def main():
