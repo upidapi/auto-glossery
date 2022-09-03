@@ -47,68 +47,6 @@ def draw_rgba_rect(surface, color, start, size, outline_width=0, outline_color=(
     pg.draw.rect(surface, outline_color, start + size, outline_width)
 
 
-# # noinspection PyTypeChecker
-# class SimplifiedDataFetch:
-#     # get modify or delete data from the master data in a pythonic way
-#     def __init__(self):
-#         with open("sample.json") as jsonFile:
-#             json_object = json.load(jsonFile)
-#             jsonFile.close()
-#
-#         self.data = json.loads(json_object)
-#
-#     # ["ParsedResults"][0]["TextOverlay"]["Lines"][index]['Words'][EditInput.selected_word['word']]['WordText']
-#     # format:
-#     # "a" is a key for the dict
-#     # i and j are indexes from lists
-#     # data[i: int]                 ->                            lines[i]
-#     # data[i: int,         a: str] -> line[j]               from lines[i]
-#     # data[i: int, j: int]         ->              words[j] from lines[i]
-#     # data[i: int, j: int, a: str] -> word[a] from words[j] from lines[i]
-#
-#     def __getitem__(self, index):
-#         if type(index) is int:
-#             return self.data["ParsedResults"][0]["TextOverlay"]["Lines"][index]
-#
-#         elif type(index[1]) is str:
-#             return self.data["ParsedResults"][0]["TextOverlay"]["Lines"][index[0]][index[1]]
-#
-#         elif type(index[1]) is int:
-#             if len(index) == 2:
-#                 return self.data["ParsedResults"][0]["TextOverlay"]["Lines"][index[0]]['Words'][index[1]]
-#
-#             else:
-#                 return self.data["ParsedResults"][0]["TextOverlay"]["Lines"][index[0]]['Words'][index[1]][index[2]]
-#
-#     def __delitem__(self, key):
-#         if type(key) is int:
-#             return self.data["ParsedResults"][0]["TextOverlay"]["Lines"][key]
-#
-#         elif type(key[1]) is str:
-#             return self.data["ParsedResults"][0]["TextOverlay"]["Lines"][key[0]][key[1]]
-#
-#         elif type(key[1]) is int:
-#             if len(key) == 2:
-#                 return self.data["ParsedResults"][0]["TextOverlay"]["Lines"][key[0]]['Words'][key[1]]
-#
-#             else:
-#                 return self.data["ParsedResults"][0]["TextOverlay"]["Lines"][key[0]]['Words'][key[1]][key[2]]
-#
-#     def __setitem__(self, key, value):
-#         if type(key) is int:
-#             self.data["ParsedResults"][0]["TextOverlay"]["Lines"][key] = value
-#
-#         elif type(key[1]) is str:
-#             self.data["ParsedResults"][0]["TextOverlay"]["Lines"][key[0]][key[1]] = value
-#
-#         elif type(key[1]) is int:
-#             if len(key) == 2:
-#                 self.data["ParsedResults"][0]["TextOverlay"]["Lines"][key[0]]['Words'][key[1]] = value
-#
-#             else:
-#                 self.data["ParsedResults"][0]["TextOverlay"]["Lines"][key[0]]['Words'][key[1]][key[2]] = value
-
-
 class Listener:
     listener = []
 
@@ -123,7 +61,7 @@ class Listener:
                 if event.key == pg.K_BACKSPACE:
 
                     # get text input from 0 to -1 i.e. end.
-                    EditInput.new_text = EditInput.new_text[:-1]
+                    Listener.text = Listener.text[:-1]
 
                 # Unicode standard is used for string
                 # formation
@@ -392,13 +330,15 @@ class EditInput:
     @staticmethod
     def get_last_selected(frame_events):
         # checks the last clicked word / line
-        word_data = EditInput.check_click_word(frame_events, button=1)
-        if word_data is not None:
-            EditInput.selected_word = word_data['index']['word']
-
         word_line = EditInput.check_click_line(frame_events, button=1)
         if word_line is not None:
             EditInput.selected_line = word_line['index']
+            EditInput.selected_word = None
+
+        word_data = EditInput.check_click_word(frame_events, button=1)
+        if word_data is not None:
+            EditInput.selected_line = word_data['index']['line']
+            EditInput.selected_word = word_data['index']['word']
 
         # if you press esc unselect the current thing
         for event in frame_events:
@@ -408,6 +348,7 @@ class EditInput:
 
     @staticmethod
     def selection_action(frame_events, select):
+        game_screen.fill((255, 255, 255))
         EditInput.get_last_selected(frame_events)
 
         # checks if you have selected a thing
@@ -580,6 +521,8 @@ def event_loop():
     Listener.save_text_input(frame_events)
 
     EditInput.selection_action(frame_events, 'both')
+
+    Other.draw_inp_mode(frame_events)
 
 
 def main():
