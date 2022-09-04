@@ -4,7 +4,8 @@ import requests
 from PIL import Image
 import listeners
 import draw
-from general_funcs import get_word_line_size
+from general_funcs import get_word_line_size, chords_to_wh
+
 
 # noinspection PyTypeChecker
 class DataJson:
@@ -151,8 +152,10 @@ class EditInput:
         for event in frame_events:
             if event.type == pg.KEYDOWN and event.key == pg.K_RETURN:
                 # noinspection PyTypeChecker
-                # data = DataJson.data[EditInput.selected_line]['Words'][EditInput.selected_word]
-                # data["Height"], data["Width"] = font.render((data['WordText'] + ' '), True, (0, 0, 0))
+                data = DataJson.data[EditInput.selected_line]['Words'][EditInput.selected_word]
+                text_img = font.render((listeners.Text.get_text()), True, (0, 0, 0))
+
+                data["Width"], data["Height"] = text_img.get_size()
                 # noinspection PyTypeChecker
                 DataJson.data[EditInput.selected_line]['Words'][EditInput.selected_word]['WordText']\
                     = listeners.Text.get_text()
@@ -162,12 +165,13 @@ class EditInput:
                 # unselect
                 EditInput.selected_word = None
                 EditInput.selected_line = None
+                listeners.Text.set_text('')
 
     @staticmethod
     def new_word(frame_events):
         for event in frame_events:
             # event.button == 2 is the middle mouse button
-            if event.type == pg.MOUSEBUTTONDOWN and event.buttton == 2:
+            if event.type == pg.MOUSEBUTTONDOWN and event.button == 3:
                 x, y = pg.mouse.get_pos()
                 data = {
                     "LineText": "",
@@ -186,6 +190,9 @@ class EditInput:
 
                 DataJson.data.append(data)
 
+                EditInput.selected_line = len(DataJson.data) - 1
+                EditInput.selected_word = 0
+
     # noinspection PyTypeChecker
     @staticmethod
     def combine_lines(l1_index, l2_index):
@@ -199,7 +206,6 @@ class EditInput:
 
         space = font.render(' ', True, (0, 0, 0))
         space_size = space.get_size()[0]
-        print(space_size)
 
         l1_size = get_word_line_size(DataJson.data[l1_index])
         l2_size = get_word_line_size(DataJson.data[l2_index])
@@ -209,30 +215,37 @@ class EditInput:
 
         # noinspection PyTypeChecker
         def la_lb(switch):
+            print(l1_size, l2_size)
             if switch:
-                rough_merge["LineText"] = l1_text + l2_text
+                rough_merge["LineText"] = l1_text + ' ' + l2_text
 
                 for word in DataJson.data[l2_index]["Words"]:
-                    word["Left"] += l1_size[2] + space_size
+                    word["Left"] += (l1_size[2] - l1_size[0] + space_size)
+                    word["Top"] -= (l2_size[1] - l1_size[1])
             else:
                 rough_merge["LineText"] = l2_text + l1_text
 
                 for word in DataJson.data[l1_index]["Words"]:
-                    word["Left"] += l2_size[2] + space_size
+                    word["Left"] += (l2_size[2] - l2_size[0] + space_size)
+                    word["Top"] -= (l1_size[1] - l2_size[1])
 
         # if the words x pos difference is smaller than x combine by y pos otherwise combine by x pos
-        if abs(l1_size[0] - l2_size[0]) < 20:
+        if abs(l1_size[0] - l2_size[0]) < 10:
             # if the y pos of l1 is smaller than l2
             if l1_size[1] < l2_size[1]:
+                print(1)
                 la_lb(True)
             else:
+                print(2)
                 la_lb(False)
 
         else:
             if l1_size[0] < l2_size[0]:
+                print(3)
                 la_lb(True)
 
             else:
+                print(4)
                 la_lb(False)
 
         print(rough_merge["LineText"])
@@ -240,11 +253,14 @@ class EditInput:
 
         # delete the one with the higher index first so the others index doesn't change
         # noinspection PyTypeChecker
-        del DataJson.data[max(l2_index, l2_index)]
+        del DataJson.data[max(l1_index, l2_index)]
         # noinspection PyTypeChecker
-        del DataJson.data[min(l2_index, l2_index)]
+        del DataJson.data[min(l1_index, l2_index)]
 
         DataJson.data.append(rough_merge)
+
+        EditInput.selected_word = None
+        EditInput.selected_line = None
 
 
     @staticmethod
@@ -324,6 +340,7 @@ def event_loop():
     listeners.Text.save_text_input(frame_events)
 
     EditInput.selection_action(frame_events, 'both')
+    EditInput.new_word(frame_events)
 
     draw.draw_inp_mode(Other.draw_mode, game_screen, DataJson.data)
 
@@ -350,6 +367,9 @@ def main():
     game_screen = pg.display.set_mode(pg_text_img.get_size())
     pg.display.set_caption('Maze')
     clock = pg.time.Clock()
+
+    print(get_word_line_size(DataJson.data[0]))
+    print(DataJson.data[0]["LineText"])
 
     while True:
         game_screen.fill((255, 255, 255))

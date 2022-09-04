@@ -20,8 +20,8 @@ def draw_rgba_rect(surface, color, start, size, outline_width=0, outline_color=(
 def draw_line_box(surface, data):
     # may look a bit of, it's because of rounding errors when drawing
     for line in data:
-        start, size = chords_to_wh(get_word_line_size(line))
-        draw_rgba_rect(surface, (200, 200, 255, 128), start, size,
+        x, y, width, height = chords_to_wh(get_word_line_size(line))
+        draw_rgba_rect(surface, (200, 200, 255, 128), (x, y), (width, height),
                        outline_width=1, outline_color=(0, 100, 255))
 
 
@@ -46,6 +46,7 @@ def draw_words(selected_type, surface, data, selected_data):
         # draw it normally
         for line in data:
             img = font.render(line["LineText"], True, (0, 0, 0))
+
             surface.blit(img, get_word_line_size(line)[0:2])
 
     else:
