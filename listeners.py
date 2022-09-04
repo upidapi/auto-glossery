@@ -72,15 +72,16 @@ class Mouse:
     def check_click(self, frame_events, data):
         word = Mouse.check_click_word(frame_events, data, self.button)
         line = Mouse.check_click_line(frame_events, data, self.button)
-        if line and word:
+        if word:
             if self.on_click_word:
                 self.on_click_word(word)
-        elif word:
-            if self.on_click_line:
-                self.on_click_line(line)
         elif line:
             if self.on_click_only_line:
                 self.on_click_only_line(line)
+        if line:
+            if self.on_click_line:
+                self.on_click_line(line)
+
 
     @classmethod
     def listen(cls, frame_events, data):

@@ -43,4 +43,3 @@ def get_word_line_size(line):
         min_chords[2] = max(min_chords[2], chords[2])
         min_chords[3] = max(min_chords[3], chords[3])
 
-    return min_chords

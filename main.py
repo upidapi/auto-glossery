@@ -4,7 +4,7 @@ import requests
 from PIL import Image
 import listeners
 import draw
-
+from general_funcs import get_word_line_size
 
 # noinspection PyTypeChecker
 class DataJson:
@@ -92,13 +92,6 @@ class DataJson:
                 if thing == word:
                     return {'line_index': i, 'word_index': j, 'type': 'word'}
 
-    @staticmethod
-    def get_selected(thing=None):
-        if EditInput.selected_word is None or thing == 'line':
-            return DataJson.data[EditInput.selected_line]
-        else:
-            return DataJson.data[EditInput.selected_line]["Words"][EditInput.selected_word]
-
 
 def left_only_line(inp):
     EditInput.selected_line = inp['index']
@@ -108,47 +101,19 @@ def left_only_line(inp):
 def left_word(inp):
     EditInput.selected_line = inp['index']['line']
     EditInput.selected_word = inp['index']['word']
-    print('rer')
+
+    # noinspection PyTypeChecker
+    text = DataJson.data[EditInput.selected_line]['Words'][EditInput.selected_word]['WordText']
+    listeners.Text.set_text(text)
 
 
+def middle_line(inp):
+    if EditInput.selected_line:
+        EditInput.combine_lines(inp["index"], EditInput.selected_line)
+
+
+middle_click = listeners.Mouse(button=2, on_click_line=middle_line)
 left_click = listeners.Mouse(button=1, on_click_only_line=left_only_line, on_click_word=left_word)
-
-
-# class BoundingBox:
-#     @staticmethod
-#     def get_word_line_size(line):
-#         min_chords = [1_000_000, 1_000_000, 0, 0]
-#         words = line["Words"]
-#         for word in words:
-#             chords = wh_to_chords((word["Left"], word["Top"], word["Width"], word["Height"]))
-#             # gets the min/max chords of chords to get the bounding box
-#             min_chords[0] = min(min_chords[0], chords[0])
-#             min_chords[1] = min(min_chords[1], chords[1])
-#             min_chords[2] = max(min_chords[2], chords[2])
-#             min_chords[3] = max(min_chords[3], chords[3])
-#
-#         return min_chords
-#
-#     @staticmethod
-#     def draw_word_line():
-#         # may look a bit of, it's because of rounding errors when drawing
-#         for line in DataJson.data:
-#             start, size = chords_to_wh(BoundingBox.get_word_line_size(line))
-#             draw_rgba_rect(game_screen, (200, 200, 255, 128), start, size,
-#                            outline_width=1, outline_color=(0, 100, 255))
-#
-#     @staticmethod
-#     def draw_word():
-#         # may look a bit of, it's because of rounding errors when drawing
-#         for line in DataJson.data:
-#             words = line["Words"]
-#
-#             # gets and draws the bounding box for each word
-#             for word in words:
-#                 draw_rgba_rect(game_screen, (200, 200, 255, 128),
-#                                (word["Left"], word["Top"]),
-#                                (word["Width"], word["Height"]),
-#                                outline_width=1, outline_color=(0, 100, 255))
 
 
 class EditInput:
@@ -186,12 +151,101 @@ class EditInput:
         for event in frame_events:
             if event.type == pg.KEYDOWN and event.key == pg.K_RETURN:
                 # noinspection PyTypeChecker
+                # data = DataJson.data[EditInput.selected_line]['Words'][EditInput.selected_word]
+                # data["Height"], data["Width"] = font.render((data['WordText'] + ' '), True, (0, 0, 0))
+                # noinspection PyTypeChecker
                 DataJson.data[EditInput.selected_line]['Words'][EditInput.selected_word]['WordText']\
                     = listeners.Text.get_text()
-
+                # noinspection PyTypeChecker
+                DataJson.data[EditInput.selected_line]['LineText']\
+                    = EditInput.sort_text(DataJson.data[EditInput.selected_line])
                 # unselect
                 EditInput.selected_word = None
                 EditInput.selected_line = None
+
+    @staticmethod
+    def new_word(frame_events):
+        for event in frame_events:
+            # event.button == 2 is the middle mouse button
+            if event.type == pg.MOUSEBUTTONDOWN and event.buttton == 2:
+                x, y = pg.mouse.get_pos()
+                data = {
+                    "LineText": "",
+                    "Words": [
+                        {
+                            "WordText": "",
+                            "Left": x,
+                            "Top": y,
+                            "Height": 0,
+                            "Width": 0
+                        }
+                    ],
+                    "MaxHeight": 0,
+                    "MinTop": y
+                }
+
+                DataJson.data.append(data)
+
+    # noinspection PyTypeChecker
+    @staticmethod
+    def combine_lines(l1_index, l2_index):
+        rough_merge = {
+            "LineText": "",
+
+            "Words": DataJson.data[l1_index]["Words"] + DataJson.data[l2_index]["Words"],
+            "MaxHeight": 0,
+            "MinTop": 0
+        }
+
+        space = font.render(' ', True, (0, 0, 0))
+        space_size = space.get_size()[0]
+        print(space_size)
+
+        l1_size = get_word_line_size(DataJson.data[l1_index])
+        l2_size = get_word_line_size(DataJson.data[l2_index])
+
+        l1_text = DataJson.data[l1_index]["LineText"]
+        l2_text = DataJson.data[l2_index]["LineText"]
+
+        # noinspection PyTypeChecker
+        def la_lb(switch):
+            if switch:
+                rough_merge["LineText"] = l1_text + l2_text
+
+                for word in DataJson.data[l2_index]["Words"]:
+                    word["Left"] += l1_size[2] + space_size
+            else:
+                rough_merge["LineText"] = l2_text + l1_text
+
+                for word in DataJson.data[l1_index]["Words"]:
+                    word["Left"] += l2_size[2] + space_size
+
+        # if the words x pos difference is smaller than x combine by y pos otherwise combine by x pos
+        if abs(l1_size[0] - l2_size[0]) < 20:
+            # if the y pos of l1 is smaller than l2
+            if l1_size[1] < l2_size[1]:
+                la_lb(True)
+            else:
+                la_lb(False)
+
+        else:
+            if l1_size[0] < l2_size[0]:
+                la_lb(True)
+
+            else:
+                la_lb(False)
+
+        print(rough_merge["LineText"])
+        _, rough_merge["MinTop"], _, rough_merge["MaxHeight"] = get_word_line_size(rough_merge)
+
+        # delete the one with the higher index first so the others index doesn't change
+        # noinspection PyTypeChecker
+        del DataJson.data[max(l2_index, l2_index)]
+        # noinspection PyTypeChecker
+        del DataJson.data[min(l2_index, l2_index)]
+
+        DataJson.data.append(rough_merge)
+
 
     @staticmethod
     def get_last_selected(frame_events):
@@ -212,7 +266,7 @@ class EditInput:
         # checks if you have selected a thing
         if EditInput.selected_word is not None and (select == 'word' or select == 'both'):
             # noinspection PyTypeChecker
-            listeners.Text.set_text(DataJson.get_selected()['WordText'])
+            text = DataJson.data[EditInput.selected_line]['Words'][EditInput.selected_word]['WordText']
             EditInput.edit(frame_events)
 
             EditInput.delete(frame_events, EditInput.selected_word)
@@ -282,8 +336,10 @@ def main():
     # noinspection PyGlobalUndefined
     global text_image_dir
     # noinspection PyGlobalUndefined
+    global font
 
     text_image_dir = 'selected_image.jpg'
+    font = pg.font.SysFont('Helvatical bold', 24)
 
     # loads, process and fetches the text from the input image
     # DataJson.get_image("spa_text_glossary_perfect")

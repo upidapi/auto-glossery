@@ -40,8 +40,8 @@ def draw_word_box(surface, data):
 
 def draw_words(selected_type, surface, data, selected_data):
     selected_line, selected_word = selected_data
-    
-    # selected_data = {selected_line: i, selected_word: j, 
+
+    # selected_data = {selected_line: i, selected_word: j,
     if selected_type is None:
         # draw it normally
         for line in data:
