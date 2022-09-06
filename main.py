@@ -16,7 +16,7 @@ class DataJson:
         """ OCR.space API request with local file.
             Python3.5 - not tested on 2.7
         :param filename: Your file path & name.
-        :param language: Language code to be used in OCR.
+        param language: Language code to be used in OCR.
                         List of available language codes can be found on https://ocr.space/OCRAPI
                         Defaults to 'en'.
         :return: Result in JSON format.
@@ -109,7 +109,7 @@ def left_word(inp):
 
 
 def middle_line(inp):
-    if EditInput.selected_line:
+    if EditInput.selected_line and EditInput.selected_line != inp["index"]:
         EditInput.combine_lines(inp["index"], EditInput.selected_line)
 
 
@@ -134,7 +134,7 @@ class EditInput:
     # used for deleting a thing
     def delete(frame_events, select):
         for event in frame_events:
-            if event.type == pg.KEYDOWN and event.key == pg.K_DELETE:
+            if event.type == pg.KEYDOWN and event.key == pg.K_MINUS:
                 if select == 'word':
                     # noinspection PyTypeChecker
                     del DataJson.data[EditInput.selected_line]['Words'][EditInput.selected_word]
@@ -285,12 +285,12 @@ class EditInput:
             text = DataJson.data[EditInput.selected_line]['Words'][EditInput.selected_word]['WordText']
             EditInput.edit(frame_events)
 
-            EditInput.delete(frame_events, EditInput.selected_word)
+            EditInput.delete(frame_events, 'word')
 
             draw.draw_words('word', game_screen, DataJson.data, (EditInput.selected_line, EditInput.selected_word))
 
         elif EditInput.selected_line is not None and (select == 'line' or select == 'both'):
-            EditInput.delete(frame_events, EditInput.selected_line)
+            EditInput.delete(frame_events, 'line')
 
             draw.draw_words('line', game_screen, DataJson.data, (EditInput.selected_line, EditInput.selected_word))
 
@@ -312,7 +312,7 @@ class Other:
     ctrl_pressed = False
 
     @staticmethod
-    def change_mode(frame_events):
+    def change_draw_box_mode(frame_events):
         for event in frame_events:
             if event.type == pg.KEYDOWN and event.key == pg.K_LCTRL:
                 Other.ctrl_pressed = True
@@ -330,17 +330,60 @@ class Other:
                 if event.key == pg.K_s:
                     Other.draw_text = not Other.draw_text
 
+
+    # @staticmethod
+    # def change_edit_mode(frame_events, next):
+    #     # add missing words, remove unnecessary words
+    #     # hit box post-processing, word post-processing, edit words
+    #     # combine lines if they are supposed to be in the same word
+    #     # combine translation and word into a full glossary
+    #
+    #     edit_mode = -1
+    #
+    #     def select_line(inp):
+    #         EditInput.selected_line = inp['index']
+    #         EditInput.selected_word = None
+    #
+    #     def select_word(inp):
+    #         EditInput.selected_line = inp['index']['line']
+    #         EditInput.selected_word = inp['index']['word']
+    #
+    #         # noinspection PyTypeChecker
+    #         text = DataJson.data[EditInput.selected_line]['Words'][EditInput.selected_word]['WordText']
+    #         listeners.Text.set_text(text)
+    #
+    #     def combine_lines(inp):
+    #         if EditInput.selected_line and EditInput.selected_line != inp["index"]:
+    #             EditInput.combine_lines(inp["index"], EditInput.selected_line)
+    #
+    #     for event in frame_events:
+    #         if event.type == pg.KEYDOWN and pg.key == pg.K_RETURN and Other.ctrl_pressed or next:
+    #             edit_mode += 1
+    #
+    #             if edit_mode == 0:
+    #                 pg.display.set_caption('add/remove words')
+    #                 left_click = listeners.Mouse(button=1, on_click_word=left_word)
+    #
+    #             if edit_mode == 1:
+    #                 pg.display.set_caption('edit words')
+    #
+    #
+    #     if edit_mode == 0:
+    #         EditInput.new_word(frame_events)
+
+
+
+
 def event_loop():
     frame_events = pg.event.get()
 
     check_exit(frame_events)
 
-    Other.change_mode(frame_events)
+    # Other.change_edit_mode(frame_events)
 
     listeners.Text.save_text_input(frame_events)
-
+    
     EditInput.selection_action(frame_events, 'both')
-    EditInput.new_word(frame_events)
 
     draw.draw_inp_mode(Other.draw_mode, game_screen, DataJson.data)
 
@@ -365,7 +408,7 @@ def main():
     pg.init()
     pg_text_img = pg.image.load(text_image_dir)
     game_screen = pg.display.set_mode(pg_text_img.get_size())
-    pg.display.set_caption('Maze')
+    pg.display.set_caption('add/remove words')
     clock = pg.time.Clock()
 
     print(get_word_line_size(DataJson.data[0]))

@@ -82,11 +82,13 @@ class Mouse:
             if self.on_click_line:
                 self.on_click_line(line)
 
-
     @classmethod
     def listen(cls, frame_events, data):
         for obj in cls.listeners:
             obj.check_click(frame_events, data)
+
+    def del_self(self):
+        Mouse.listeners.remove(self)
 
 
 def listen(frame_events, data):
