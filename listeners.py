@@ -45,6 +45,10 @@ class Mouse:
 
         Mouse.listeners.append(self)
 
+    # removes the instance from the instance, so it doesn't get referenced after deletion
+    def __del__(self):
+        Mouse.listeners.remove(self)
+
     @staticmethod
     def check_click_word(frame_events, data, button=1):
         for event in frame_events:
@@ -86,9 +90,6 @@ class Mouse:
     def listen(cls, frame_events, data):
         for obj in cls.listeners:
             obj.check_click(frame_events, data)
-
-    def del_self(self):
-        Mouse.listeners.remove(self)
 
 
 def listen(frame_events, data):

@@ -338,9 +338,9 @@ class Other:
 
 
     @staticmethod
-    def change_edit_mode(frame_events, next):
-        # add missing words, remove unnecessary words
-        # hit box post-processing, word post-processing, edit words
+    def change_edit_mode(frame_events):
+        # add / remove missing words / lines
+        # hit box post-processing, word post-processing, edit words / line
         # combine lines if they are supposed to be in the same word
         # combine translation and word into a full glossary
 
@@ -363,7 +363,7 @@ class Other:
                 EditInput.combine_lines(inp["index"], EditInput.selected_line)
 
         for event in frame_events:
-            if event.type == pg.KEYDOWN and pg.key == pg.K_RETURN and Other.ctrl_pressed or next:
+            if event.type == pg.KEYDOWN and pg.key == pg.K_RETURN and Other.ctrl_pressed:
                 edit_mode += 1
 
                 if edit_mode == 0:
@@ -375,7 +375,6 @@ class Other:
 
                 if edit_mode == 2:
                     pg.display.set_caption('combine/edit lines')
-                    left_click.del_self()
                     del left_click
                     left_click = listeners.Mouse(button=1, on_click_line=select_line)
                     middle_click = listeners.Mouse(button=2, on_click_line=combine_lines)
