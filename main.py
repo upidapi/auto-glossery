@@ -138,6 +138,12 @@ class EditInput:
                 if select == 'word':
                     # noinspection PyTypeChecker
                     del DataJson.data[EditInput.selected_line]['Words'][EditInput.selected_word]
+
+                    # noinspection PyTypeChecker
+                    DataJson.data[EditInput.selected_line]['LineText'] = EditInput.sort_text(
+                        DataJson.data[EditInput.selected_line]
+                    )
+
                 elif select == 'line':
                     # noinspection PyTypeChecker
                     del DataJson.data[EditInput.selected_line]
@@ -331,47 +337,61 @@ class Other:
                     Other.draw_text = not Other.draw_text
 
 
-    # @staticmethod
-    # def change_edit_mode(frame_events, next):
-    #     # add missing words, remove unnecessary words
-    #     # hit box post-processing, word post-processing, edit words
-    #     # combine lines if they are supposed to be in the same word
-    #     # combine translation and word into a full glossary
-    #
-    #     edit_mode = -1
-    #
-    #     def select_line(inp):
-    #         EditInput.selected_line = inp['index']
-    #         EditInput.selected_word = None
-    #
-    #     def select_word(inp):
-    #         EditInput.selected_line = inp['index']['line']
-    #         EditInput.selected_word = inp['index']['word']
-    #
-    #         # noinspection PyTypeChecker
-    #         text = DataJson.data[EditInput.selected_line]['Words'][EditInput.selected_word]['WordText']
-    #         listeners.Text.set_text(text)
-    #
-    #     def combine_lines(inp):
-    #         if EditInput.selected_line and EditInput.selected_line != inp["index"]:
-    #             EditInput.combine_lines(inp["index"], EditInput.selected_line)
-    #
-    #     for event in frame_events:
-    #         if event.type == pg.KEYDOWN and pg.key == pg.K_RETURN and Other.ctrl_pressed or next:
-    #             edit_mode += 1
-    #
-    #             if edit_mode == 0:
-    #                 pg.display.set_caption('add/remove words')
-    #                 left_click = listeners.Mouse(button=1, on_click_word=left_word)
-    #
-    #             if edit_mode == 1:
-    #                 pg.display.set_caption('edit words')
-    #
-    #
-    #     if edit_mode == 0:
-    #         EditInput.new_word(frame_events)
+    @staticmethod
+    def change_edit_mode(frame_events, next):
+        # add missing words, remove unnecessary words
+        # hit box post-processing, word post-processing, edit words
+        # combine lines if they are supposed to be in the same word
+        # combine translation and word into a full glossary
 
+        edit_mode = -1
 
+        def select_line(inp):
+            EditInput.selected_line = inp['index']
+            EditInput.selected_word = None
+
+        def select_word(inp):
+            EditInput.selected_line = inp['index']['line']
+            EditInput.selected_word = inp['index']['word']
+
+            # noinspection PyTypeChecker
+            text = DataJson.data[EditInput.selected_line]['Words'][EditInput.selected_word]['WordText']
+            listeners.Text.set_text(text)
+
+        def combine_lines(inp):
+            if EditInput.selected_line and EditInput.selected_line != inp["index"]:
+                EditInput.combine_lines(inp["index"], EditInput.selected_line)
+
+        for event in frame_events:
+            if event.type == pg.KEYDOWN and pg.key == pg.K_RETURN and Other.ctrl_pressed or next:
+                edit_mode += 1
+
+                if edit_mode == 0:
+                    pg.display.set_caption('add/remove words')
+                    left_click = listeners.Mouse(button=1, on_click_word=select_word)
+
+                if edit_mode == 1:
+                    pg.display.set_caption('edit words')
+
+                if edit_mode == 2:
+                    pg.display.set_caption('combine/edit lines')
+                    left_click.del_self()
+                    del left_click
+                    left_click = listeners.Mouse(button=1, on_click_line=select_line)
+                    middle_click = listeners.Mouse(button=2, on_click_line=combine_lines)
+
+        if edit_mode == 0:
+            EditInput.new_word(frame_events)
+
+            if EditInput.selected_word:
+                EditInput.delete(frame_events, 'word')
+
+            elif EditInput.selected_line:
+                EditInput.delete(frame_events, 'line')
+
+        if edit_mode == 1:
+            if EditInput.selected_word:
+                EditInput.edit(frame_events)
 
 
 def event_loop():
@@ -410,9 +430,6 @@ def main():
     game_screen = pg.display.set_mode(pg_text_img.get_size())
     pg.display.set_caption('add/remove words')
     clock = pg.time.Clock()
-
-    print(get_word_line_size(DataJson.data[0]))
-    print(DataJson.data[0]["LineText"])
 
     while True:
         game_screen.fill((255, 255, 255))
